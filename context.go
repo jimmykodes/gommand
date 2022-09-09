@@ -6,7 +6,10 @@ import (
 
 type Context struct {
 	context.Context
-	args []string
+	args      []string
+	preRuns   []func(*Context) error
+	postRuns  []func(*Context) error
+	deferPost bool
 }
 
 func (c *Context) Args() []string {

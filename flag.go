@@ -150,3 +150,76 @@ func (f *boolFlag) Set(s string) error {
 func (f *boolFlag) SetEnvPrefix(prefix string) {
 	f.envPrefix = prefix
 }
+
+type float64Flag struct {
+	name      string
+	short     rune
+	usage     string
+	set       bool
+	req       bool
+	envPrefix string
+
+	defValue float64
+	Value    float64
+}
+
+func (f *float64Flag) Type() FlagType    { return Float64FlagType }
+func (f *float64Flag) Name() string      { return f.name }
+func (f *float64Flag) Short() rune       { return f.short }
+func (f *float64Flag) Usage() string     { return f.usage }
+func (f *float64Flag) IsSet() bool       { return f.set }
+func (f *float64Flag) IsRequired() bool  { return f.req }
+func (f *float64Flag) EnvPrefix() string { return f.envPrefix }
+
+func (f *float64Flag) Required() {
+	f.req = true
+}
+
+func (f *float64Flag) Set(s string) error {
+	v, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return err
+	}
+
+	f.Value = v
+	f.set = true
+	return nil
+}
+
+func (f *float64Flag) SetEnvPrefix(prefix string) {
+	f.envPrefix = prefix
+}
+
+type stringFlag struct {
+	name      string
+	short     rune
+	usage     string
+	set       bool
+	req       bool
+	envPrefix string
+
+	defValue string
+	Value    string
+}
+
+func (f *stringFlag) Type() FlagType    { return StringFlagType }
+func (f *stringFlag) Name() string      { return f.name }
+func (f *stringFlag) Short() rune       { return f.short }
+func (f *stringFlag) Usage() string     { return f.usage }
+func (f *stringFlag) IsSet() bool       { return f.set }
+func (f *stringFlag) IsRequired() bool  { return f.req }
+func (f *stringFlag) EnvPrefix() string { return f.envPrefix }
+
+func (f *stringFlag) Required() {
+	f.req = true
+}
+
+func (f *stringFlag) Set(s string) error {
+	f.Value = s
+	f.set = true
+	return nil
+}
+
+func (f *stringFlag) SetEnvPrefix(prefix string) {
+	f.envPrefix = prefix
+}

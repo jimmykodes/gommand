@@ -25,21 +25,7 @@ var rootCmd = &gommand.Command{
 	},
 }
 
-var subCmd = &gommand.Command{
-	Name: "sub",
-	Run: func(ctx *gommand.Context) error {
-		m, err := ctx.Flags().LookupInt("mult")
-		if err != nil {
-			return err
-		}
-		fmt.Println(m)
-		return nil
-	},
-}
-
 func init() {
-	rootCmd.SubCommand(subCmd)
-
 	rootCmd.Flags().Int("num", 10, "a number")
 	rootCmd.Flags().BoolS("dry-run", 'd', false, "dry run")
 	rootCmd.Flags().BoolS("insensitive", 'i', false, "case-insensitive")

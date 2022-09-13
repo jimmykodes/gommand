@@ -98,6 +98,30 @@ func (fs *FlagSet) boolVal(name string) (bool, error) {
 	return tf.defValue, nil
 }
 
+func (fs *FlagSet) float64Val(name string) (float64, error) {
+	f, err := fs.flag(name, Float64FlagType)
+	if err != nil {
+		return 0, err
+	}
+	tf := f.(*float64Flag)
+	if tf.IsSet() {
+		return tf.Value, nil
+	}
+	return tf.defValue, nil
+}
+
+func (fs *FlagSet) stringVal(name string) (string, error) {
+	f, err := fs.flag(name, StringFlagType)
+	if err != nil {
+		return "", err
+	}
+	tf := f.(*stringFlag)
+	if tf.IsSet() {
+		return tf.Value, nil
+	}
+	return tf.defValue, nil
+}
+
 func (fs *FlagSet) flag(name string, t FlagType) (Flag, error) {
 	f, ok := fs.flags[name]
 	if !ok {

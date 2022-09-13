@@ -14,10 +14,10 @@ var (
 		Description: "a collection of math commands",
 	}
 	sumCmd = &gommand.Command{
-		Name:        "sum",
-		Usage:       "sum [...n]",
-		Description: "sum all supplied numbers",
-		Args:        gommand.ArgsMin(1),
+		Name:         "sum",
+		Usage:        "sum [...n]",
+		Description:  "sum all supplied numbers",
+		ArgValidator: gommand.ArgsMin(1),
 		Run: func(ctx *gommand.Context) error {
 			var total int
 			for _, s := range ctx.Args() {
@@ -32,10 +32,10 @@ var (
 		},
 	}
 	multCmd = &gommand.Command{
-		Name:        "mult",
-		Usage:       "mult n1 n2",
-		Description: "multiply the two provided integers",
-		Args:        gommand.ArgsExact(2),
+		Name:         "mult",
+		Usage:        "mult n1 n2",
+		Description:  "multiply the two provided integers",
+		ArgValidator: gommand.ArgsExact(2),
 		Run: func(ctx *gommand.Context) error {
 			args := ctx.Args()
 			n0, err := strconv.Atoi(args[0])

@@ -9,10 +9,10 @@ import (
 )
 
 var rootCmd = &gommand.Command{
-	Name:        "sum",
-	Usage:       "sum [...n]",
-	Description: "sum all provided numbers",
-	Args:        gommand.ArgsEvery(gommand.ArgsMin(1), ints),
+	Name:         "sum",
+	Usage:        "sum [...n]",
+	Description:  "sum all provided numbers",
+	ArgValidator: gommand.ArgsEvery(gommand.ArgsMin(1), ints),
 	Run: func(ctx *gommand.Context) error {
 		var total int
 		for _, s := range ctx.Args() {

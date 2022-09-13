@@ -2,10 +2,16 @@ package gommand
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"go.uber.org/multierr"
+)
+
+var (
+	ErrNoRunner = errors.New("gommand: command has no run function")
 )
 
 // Command represents a command line command
@@ -47,10 +53,10 @@ type Command struct {
 	// Description is the longer description of the command printed out by the help text
 	Description string
 
-	// Args is an ArgValidator to be called on the args of the function being executed. This is called before any of
+	// ArgValidator is an ArgValidator to be called on the args of the function being executed. This is called before any of
 	// the functions for this command are called.
 	// If this is not defined ArgsNone is used.
-	Args ArgValidator
+	ArgValidator ArgValidator
 
 	// Run is the core function the command should execute
 	Run func(*Context) error
@@ -110,12 +116,15 @@ type Command struct {
 
 	parent   *Command
 	commands map[string]*Command
-	errs     []error
+
+	flags           *FlagSet
+	persistentFlags *FlagSet
+
+	errs []error
 }
 
 func (c *Command) ExecuteContext(ctx context.Context) error {
 	args := os.Args[1:]
-	// todo: parse flags
 
 	err := c.execute(&Context{
 		Context: ctx,
@@ -137,6 +146,22 @@ func (c *Command) SubCommand(cmd *Command, cmds ...*Command) {
 	for _, command := range cmds {
 		c.subCommand(command)
 	}
+}
+
+func (c *Command) Flags() *FlagSet {
+	if c.flags != nil {
+		return c.flags
+	}
+	c.flags = NewFlagSet()
+	return c.flags
+}
+
+func (c *Command) PersistentFlags() *FlagSet {
+	if c.persistentFlags != nil {
+		return c.persistentFlags
+	}
+	c.persistentFlags = NewFlagSet()
+	return c.persistentFlags
 }
 
 func (c *Command) subCommand(cmd *Command) {
@@ -164,7 +189,7 @@ func (c *Command) execute(ctx *Context) error {
 	}
 
 	if c.commands != nil {
-		if len(ctx.Args()) > 0 {
+		if len(ctx.args) > 0 {
 			next := c.commands[ctx.args[0]]
 			if next != nil {
 				ctx.args = ctx.args[1:]
@@ -174,12 +199,98 @@ func (c *Command) execute(ctx *Context) error {
 		// cannot have a command with subcommands also have its own run func. because reasons
 		return fmt.Errorf("early termination: %s", c.Name)
 	}
-	validator := c.Args
+	fs := NewFlagSet()
+
+	p := c.parent
+	for p != nil {
+		fs.AddFlagSet(p.PersistentFlags())
+		p = p.parent
+	}
+
+	fs.AddFlagSet(c.PersistentFlags())
+	fs.AddFlagSet(c.Flags())
+
+	ctx.flagGetter = &FlagGetter{fs: fs}
+
+	for len(ctx.args) > 0 && isFlag(ctx.args[0]) {
+		arg := ctx.args[0][1:]
+		isShort := true
+		if arg[0] == '-' {
+			isShort = false
+			arg = arg[1:]
+		}
+		s := strings.SplitN(arg, "=", 2)
+		var (
+			flagStr = s[0]
+			value   string
+		)
+		if len(s) == 2 {
+			value = s[1]
+		}
+
+		if isShort {
+			if len(flagStr) > 1 {
+				// mutli-bool flags
+				if value != "" {
+					return fmt.Errorf("invalid flag. cannot assign value to multi-bool flag")
+				}
+				for _, shorthand := range flagStr {
+					f := fs.shortFlags[shorthand]
+					if f == nil {
+						return fmt.Errorf("missing flag: %v", shorthand)
+					}
+					if f.Type() != BoolFlagType {
+						return fmt.Errorf("multi-flags can only be bool types")
+					}
+					if err := f.Set("true"); err != nil {
+						return err
+					}
+				}
+			} else {
+				// single short flag
+				f := fs.shortFlags[rune(flagStr[0])]
+				if f == nil {
+					return fmt.Errorf("missing flag: %v", flagStr[0])
+				}
+				if value == "" && f.Type() != BoolFlagType {
+					if len(ctx.args) > 1 {
+						if next := ctx.args[1]; next[0] != '-' {
+							value = next
+							ctx.args = ctx.args[1:]
+						}
+					}
+				}
+				if err := f.Set(value); err != nil {
+					return err
+				}
+			}
+		} else {
+			// not a short flag
+			f := fs.flags[flagStr]
+			if f == nil {
+				return fmt.Errorf("missing flag: %s", flagStr)
+			}
+			if value == "" && f.Type() != BoolFlagType {
+				if len(ctx.args) > 1 {
+					if next := ctx.args[1]; next[0] != '-' {
+						value = next
+						ctx.args = ctx.args[1:]
+					}
+				}
+			}
+			if err := f.Set(value); err != nil {
+				return err
+			}
+		}
+		ctx.args = ctx.args[1:]
+	}
+
+	validator := c.ArgValidator
 	if validator == nil {
 		// default to allowing no args unless specified otherwise.
 		validator = ArgsNone()
 	}
-	if !validator(ctx.Args()) {
+	if !validator(ctx.args) {
 		return fmt.Errorf("invalid args")
 	}
 
@@ -188,24 +299,28 @@ func (c *Command) execute(ctx *Context) error {
 			return err
 		}
 	}
-	if err := c.PreRun(ctx); err != nil {
-		return err
+	if c.PreRun != nil {
+		if err := c.PreRun(ctx); err != nil {
+			return err
+		}
 	}
 
 	var runErr error
 	defer func() {
-		p := recover()
-		if p != nil && !ctx.deferPost {
-			// a panic happened, but DeferPost isn't set,
-			panic(p)
-		}
+		// p := recover()
+		// if p != nil && !ctx.deferPost {
+		// 	// a panic happened, but DeferPost isn't set,
+		// 	panic(p)
+		// }
 		if runErr != nil && !ctx.deferPost {
 			return
 		}
-		if err := c.PostRun(ctx); err != nil {
-			c.errs = append(c.errs, err)
-			if !ctx.deferPost {
-				return
+		if c.PostRun != nil {
+			if err := c.PostRun(ctx); err != nil {
+				c.errs = append(c.errs, err)
+				if !ctx.deferPost {
+					return
+				}
 			}
 		}
 		for _, f := range ctx.postRuns {
@@ -217,6 +332,13 @@ func (c *Command) execute(ctx *Context) error {
 			}
 		}
 	}()
+	if c.Run == nil {
+		return ErrNoRunner
+	}
 	runErr = c.Run(ctx)
 	return runErr
+}
+
+func isFlag(s string) bool {
+	return s[0] == '-'
 }

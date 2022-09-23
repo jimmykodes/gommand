@@ -148,6 +148,64 @@ func (c *Command) SubCommand(cmd *Command, cmds ...*Command) {
 	}
 }
 
+func (c *Command) help() {
+	if c.Description != "" {
+		fmt.Println(c.Description)
+		fmt.Println()
+	}
+	fmt.Println("Usage:")
+	if c.Usage != "" {
+		fmt.Print("  ", c.Usage)
+	} else {
+		fmt.Print("  ", c.Name)
+	}
+	if len(c.commands) > 0 {
+		fmt.Print(" [commands]")
+	}
+	if len(c.Flags().flags) > 0 || len(c.PersistentFlags().flags) > 0 {
+		fmt.Print(" [flags]")
+	}
+	fmt.Println()
+	fmt.Println()
+
+	if len(c.commands) > 0 {
+		fmt.Println("Available Commands:")
+		for k, command := range c.commands {
+			fmt.Println(" ", k, "-", command.Usage)
+		}
+	}
+
+	if f := c.Flags(); len(f.flags) > 0 {
+		fmt.Println("Flags:")
+		for _, flag := range f.flags {
+			fmt.Print("  ")
+			if flag.Short() > 0 {
+				fmt.Print("-", string(byte(flag.Short())), ", ")
+			} else {
+				fmt.Print("    ")
+			}
+			// todo: figure out actual usage padding from longest flag name
+			// todo: sort flags alphabetically by name for consistent print order
+			fmt.Print("--", flag.Name(), "\t", flag.Usage(), "\n")
+		}
+		fmt.Println()
+	}
+	if f := c.PersistentFlags(); len(f.flags) > 0 {
+		fmt.Println("Global Flags:")
+		for _, flag := range f.flags {
+			fmt.Print("  ")
+			if flag.Short() > 0 {
+				fmt.Print("-", string(byte(flag.Short())), ", ")
+			} else {
+				fmt.Print("    ")
+			}
+			// todo: figure out actual usage padding from longest flag name
+			// todo: sort flags alphabetically by name for consistent print order
+			fmt.Print("--", flag.Name(), "\t", flag.Usage(), "\n")
+		}
+	}
+}
+
 func (c *Command) Flags() *FlagSet {
 	if c.flags != nil {
 		return c.flags
@@ -186,6 +244,11 @@ func (c *Command) execute(ctx *Context) error {
 
 	if c.DeferPost {
 		ctx.deferPost = true
+	}
+	// todo: trigger from flag as well.
+	if ctx.args[0] == "help" {
+		c.help()
+		return nil
 	}
 
 	if c.commands != nil {

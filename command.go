@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"go.uber.org/multierr"
@@ -175,33 +176,41 @@ func (c *Command) help() {
 		}
 	}
 
-	if f := c.Flags(); len(f.flags) > 0 {
-		fmt.Println("Flags:")
-		for _, flag := range f.flags {
-			fmt.Print("  ")
-			if flag.Short() > 0 {
-				fmt.Print("-", string(byte(flag.Short())), ", ")
-			} else {
-				fmt.Print("    ")
+	{
+		f := c.Flags()
+		f.BoolS("help", 'h', false, "show command help")
+
+		names := make([]string, 0, len(f.flags))
+		maxLen := 0
+		for n, flag := range f.flags {
+			names = append(names, n)
+			if l := len(flag.Name()); l > maxLen {
+				maxLen = l
 			}
-			// todo: figure out actual usage padding from longest flag name
-			// todo: sort flags alphabetically by name for consistent print order
-			fmt.Print("--", flag.Name(), "\t", flag.Usage(), "\n")
 		}
-		fmt.Println()
+		sort.Strings(names)
+
+		fmt.Println("Flags:")
+		for _, name := range names {
+			fmt.Println(flagStringer(f.flags[name], maxLen))
+		}
 	}
+
+	fmt.Println()
 	if f := c.PersistentFlags(); len(f.flags) > 0 {
-		fmt.Println("Global Flags:")
-		for _, flag := range f.flags {
-			fmt.Print("  ")
-			if flag.Short() > 0 {
-				fmt.Print("-", string(byte(flag.Short())), ", ")
-			} else {
-				fmt.Print("    ")
+		names := make([]string, 0, len(f.flags))
+		maxLen := 0
+		for n, flag := range f.flags {
+			names = append(names, n)
+			if l := len(flag.Name()); l > maxLen {
+				maxLen = l
 			}
-			// todo: figure out actual usage padding from longest flag name
-			// todo: sort flags alphabetically by name for consistent print order
-			fmt.Print("--", flag.Name(), "\t", flag.Usage(), "\n")
+		}
+		sort.Strings(names)
+
+		fmt.Println("Global Flags:")
+		for _, name := range names {
+			fmt.Println(flagStringer(f.flags[name], maxLen))
 		}
 	}
 }
@@ -245,7 +254,7 @@ func (c *Command) execute(ctx *Context) error {
 	if c.DeferPost {
 		ctx.deferPost = true
 	}
-	// todo: trigger from flag as well.
+
 	if ctx.args[0] == "help" {
 		c.help()
 		return nil
@@ -290,6 +299,10 @@ func (c *Command) execute(ctx *Context) error {
 		if len(s) == 2 {
 			value = s[1]
 		}
+		if flagStr == "help" {
+			c.help()
+			return nil
+		}
 
 		if isShort {
 			if len(flagStr) > 1 {
@@ -298,9 +311,13 @@ func (c *Command) execute(ctx *Context) error {
 					return fmt.Errorf("invalid flag. cannot assign value to multi-bool flag")
 				}
 				for _, shorthand := range flagStr {
+					if shorthand == 'h' {
+						c.help()
+						return nil
+					}
 					f := fs.shortFlags[shorthand]
 					if f == nil {
-						return fmt.Errorf("missing flag: %v", shorthand)
+						return fmt.Errorf("missing flag: %s", string(shorthand))
 					}
 					if f.Type() != BoolFlagType {
 						return fmt.Errorf("multi-flags can only be bool types")
@@ -311,6 +328,10 @@ func (c *Command) execute(ctx *Context) error {
 				}
 			} else {
 				// single short flag
+				if flagStr == "h" {
+					c.help()
+					return nil
+				}
 				f := fs.shortFlags[rune(flagStr[0])]
 				if f == nil {
 					return fmt.Errorf("missing flag: %v", flagStr[0])

@@ -1,7 +1,9 @@
 package gommand
 
 import (
+	"fmt"
 	"strconv"
+	"strings"
 )
 
 type FlagType int
@@ -26,6 +28,27 @@ type Flag interface {
 
 	Set(string) error
 	SetEnvPrefix(string)
+}
+
+func flagStringer(flag Flag, nameLen int) string {
+	var sb strings.Builder
+
+	_, _ = fmt.Fprint(&sb, "  ")
+	if flag.Short() > 0 {
+		_, _ = fmt.Fprint(&sb, "-", string(byte(flag.Short())), ", ")
+	} else {
+		_, _ = fmt.Fprint(&sb, "    ")
+	}
+
+	_, _ = fmt.Fprint(
+		&sb,
+		"--",
+		flag.Name(),
+		strings.Repeat(" ", nameLen-len(flag.Name())),
+		"  ",
+		flag.Usage(),
+	)
+	return sb.String()
 }
 
 func IntFlag(name string, value int, usage string) Flag {

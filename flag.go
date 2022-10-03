@@ -51,6 +51,23 @@ func flagStringer(flag Flag, nameLen int) string {
 	return sb.String()
 }
 
+func StringFlag(name, value, usage string) Flag {
+	return &stringFlag{
+		name:     name,
+		usage:    usage,
+		defValue: value,
+	}
+}
+
+func StringFlagS(name string, shorthand rune, value, usage string) Flag {
+	return &stringFlag{
+		name:     name,
+		short:    shorthand,
+		usage:    usage,
+		defValue: value,
+	}
+}
+
 func IntFlag(name string, value int, usage string) Flag {
 	return &intFlag{
 		name:     name,

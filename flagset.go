@@ -29,7 +29,11 @@ func NewFlagSet(options ...FlagSetOption) *FlagSet {
 }
 
 func (fs *FlagSet) String(name, value, usage string) {
+	fs.addFlag(StringFlag(name, value, usage))
+}
 
+func (fs *FlagSet) StringS(name string, shorthand rune, value, usage string) {
+	fs.addFlag(StringFlagS(name, shorthand, value, usage))
 }
 
 func (fs *FlagSet) Int(name string, value int, usage string) {

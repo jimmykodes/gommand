@@ -255,7 +255,7 @@ func (c *Command) execute(ctx *Context) error {
 		ctx.deferPost = true
 	}
 
-	if ctx.args[0] == "help" {
+	if len(ctx.args) > 0 && ctx.args[0] == "help" {
 		c.help()
 		return nil
 	}

@@ -102,6 +102,23 @@ func BoolFlagS(name string, shorthand rune, value bool, usage string) Flag {
 	}
 }
 
+func Float64Flag(name string, value float64, usage string) Flag {
+	return &float64Flag{
+		name:     name,
+		usage:    usage,
+		defValue: value,
+	}
+}
+
+func Float64FlagS(name string, shorthand rune, value float64, usage string) Flag {
+	return &float64Flag{
+		name:     name,
+		short:    shorthand,
+		usage:    usage,
+		defValue: value,
+	}
+}
+
 type intFlag struct {
 	name      string
 	short     rune

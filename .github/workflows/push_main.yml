@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: 14
       - name: Install Dependencies
-        run: npm install conventional-changelog-conventionalcommits
+        run: npm install conventional-changelog-conventionalcommits semantic-release
         working-directory: ./.github/workflows
       - name: Release
         working-directory: ./.github/workflows

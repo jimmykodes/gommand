@@ -102,11 +102,6 @@ func BoolFlagS(name string, shorthand rune, value bool, usage string) Flag {
 	}
 }
 
-type rawFlag struct {
-	name  string
-	value string
-}
-
 type intFlag struct {
 	name      string
 	short     rune

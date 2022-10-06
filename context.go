@@ -11,7 +11,6 @@ type Context struct {
 	postRuns   []func(*Context) error
 	deferPost  bool
 	flagGetter *FlagGetter
-	rawFlags   []*rawFlag
 }
 
 func (c *Context) Args() []string {

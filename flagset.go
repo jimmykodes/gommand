@@ -52,6 +52,14 @@ func (fs *FlagSet) BoolS(name string, shorthand rune, value bool, usage string) 
 	fs.addFlag(BoolFlagS(name, shorthand, value, usage))
 }
 
+func (fs *FlagSet) Float64(name string, value float64, usage string) {
+	fs.addFlag(Float64Flag(name, value, usage))
+}
+
+func (fs *FlagSet) Float64S(name string, shorthand rune, value float64, usage string) {
+	fs.addFlag(Float64FlagS(name, shorthand, value, usage))
+}
+
 func (fs *FlagSet) addFlag(f Flag) {
 	f.SetEnvPrefix(fs.envPrefix)
 	fs.flags[f.Name()] = f

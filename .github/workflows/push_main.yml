@@ -23,5 +23,5 @@ jobs:
         working-directory: ./.github/workflows
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx --no-install semantic-release
+        run: npx semantic-release
 

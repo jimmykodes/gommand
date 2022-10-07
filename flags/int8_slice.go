@@ -22,10 +22,8 @@ func (f *int8SliceFlag) Value() any {
 }
 
 func (f *int8SliceFlag) Set(s string) error {
-	var (
-		pieces = strings.Split(s, sliceSeparator)
-		v      = make([]int8, len(pieces))
-	)
+	pieces := strings.Split(s, sliceSeparator)
+	v := make([]int8, len(pieces))
 	for i, piece := range pieces {
 		val, err := strconv.ParseInt(piece, 0, 8)
 		if err != nil {

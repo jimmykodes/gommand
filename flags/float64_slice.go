@@ -22,10 +22,8 @@ func (f *float64SliceFlag) Value() any {
 }
 
 func (f *float64SliceFlag) Set(s string) error {
-	var (
-		pieces = strings.Split(s, sliceSeparator)
-		v      = make([]float64, len(pieces))
-	)
+	pieces := strings.Split(s, sliceSeparator)
+	v := make([]float64, len(pieces))
 	for i, piece := range pieces {
 		val, err := strconv.ParseFloat(piece, 64)
 		if err != nil {

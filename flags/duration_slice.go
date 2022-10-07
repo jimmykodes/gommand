@@ -22,10 +22,8 @@ func (f *durationSliceFlag) Value() any {
 }
 
 func (f *durationSliceFlag) Set(s string) error {
-	var (
-		pieces = strings.Split(s, sliceSeparator)
-		v      = make([]time.Duration, len(pieces))
-	)
+	pieces := strings.Split(s, sliceSeparator)
+	v := make([]time.Duration, len(pieces))
 	for i, piece := range pieces {
 		val, err := time.ParseDuration(piece)
 		if err != nil {

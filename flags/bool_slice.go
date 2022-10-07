@@ -22,10 +22,8 @@ func (f *boolSliceFlag) Value() any {
 }
 
 func (f *boolSliceFlag) Set(s string) error {
-	var (
-		pieces = strings.Split(s, sliceSeparator)
-		v      = make([]bool, len(pieces))
-	)
+	pieces := strings.Split(s, sliceSeparator)
+	v := make([]bool, len(pieces))
 	for i, piece := range pieces {
 		val, err := strconv.ParseBool(piece)
 		if err != nil {

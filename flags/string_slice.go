@@ -21,14 +21,8 @@ func (f *stringSliceFlag) Value() any {
 }
 
 func (f *stringSliceFlag) Set(s string) error {
-	var (
-		pieces = strings.Split(s, sliceSeparator)
-		v      = make([]string, len(pieces))
-	)
-	for i, piece := range pieces {
-		v[i] = piece
-	}
-	f.value = v
+	pieces := strings.Split(s, sliceSeparator)
+	f.value = pieces
 	f.set = true
 	return nil
 }

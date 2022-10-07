@@ -1,9 +1,5 @@
 package flags
 
-import (
-    "strconv"
-)
-
 type stringFlag struct {
     *baseFlag
 

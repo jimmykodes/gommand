@@ -52,7 +52,7 @@ func main() {
 	if err := createFlag("bool", "strconv.ParseBool(s)", "false", baseImport); err != nil {
 		panic(err)
 	}
-	if err := createFlag("string", "", `""`, baseImport); err != nil {
+	if err := createFlag("string", "", `""`, nil); err != nil {
 		panic(err)
 	}
 	if err := createFlag("time.Duration", "time.ParseDuration(s)", `time.Duration(0)`, []string{"time"}); err != nil {

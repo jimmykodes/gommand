@@ -1,9 +1,10 @@
 package flags
 
-import ({{ range .Imports }}
+{{ if .Imports -}}import ({{ range .Imports }}
     "{{ . }}"{{ end }}
 )
 
+{{ end -}}
 type {{ .Name }}Flag struct {
     *baseFlag
 

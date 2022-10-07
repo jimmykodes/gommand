@@ -5,10 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 
 	"go.uber.org/multierr"
+
+	"github.com/jimmykodes/gommand/flags"
 )
 
 var (
@@ -118,8 +119,8 @@ type Command struct {
 	parent   *Command
 	commands map[string]*Command
 
-	flags           *FlagSet
-	persistentFlags *FlagSet
+	flags           *flags.FlagSet
+	persistentFlags *flags.FlagSet
 
 	errs []error
 }
@@ -163,9 +164,9 @@ func (c *Command) help() {
 	if len(c.commands) > 0 {
 		fmt.Print(" [commands]")
 	}
-	if len(c.Flags().flags) > 0 || len(c.PersistentFlags().flags) > 0 {
-		fmt.Print(" [flags]")
-	}
+	// if len(c.Flags().flags) > 0 || len(c.PersistentFlags().flags) > 0 {
+	// 	fmt.Print(" [flags]")
+	// }
 	fmt.Println()
 	fmt.Println()
 
@@ -180,54 +181,54 @@ func (c *Command) help() {
 		f := c.Flags()
 		f.BoolS("help", 'h', false, "show command help")
 
-		names := make([]string, 0, len(f.flags))
-		maxLen := 0
-		for n, flag := range f.flags {
-			names = append(names, n)
-			if l := len(flag.Name()); l > maxLen {
-				maxLen = l
-			}
-		}
-		sort.Strings(names)
-
-		fmt.Println("Flags:")
-		for _, name := range names {
-			fmt.Println(flagStringer(f.flags[name], maxLen))
-		}
+		// names := make([]string, 0, len(f.flags))
+		// maxLen := 0
+		// for n, flag := range f.flags {
+		// 	names = append(names, n)
+		// 	if l := len(flag.Name()); l > maxLen {
+		// 		maxLen = l
+		// 	}
+		// }
+		// sort.Strings(names)
+		//
+		// fmt.Println("Flags:")
+		// for _, name := range names {
+		// 	fmt.Println(flags.flagStringer(f.flags[name], maxLen))
+		// }
 	}
 
 	fmt.Println()
-	if f := c.PersistentFlags(); len(f.flags) > 0 {
-		names := make([]string, 0, len(f.flags))
-		maxLen := 0
-		for n, flag := range f.flags {
-			names = append(names, n)
-			if l := len(flag.Name()); l > maxLen {
-				maxLen = l
-			}
-		}
-		sort.Strings(names)
-
-		fmt.Println("Global Flags:")
-		for _, name := range names {
-			fmt.Println(flagStringer(f.flags[name], maxLen))
-		}
-	}
+	// if f := c.PersistentFlags(); len(f.flags) > 0 {
+	// 	names := make([]string, 0, len(f.flags))
+	// 	maxLen := 0
+	// 	for n, flag := range f.flags {
+	// 		names = append(names, n)
+	// 		if l := len(flag.Name()); l > maxLen {
+	// 			maxLen = l
+	// 		}
+	// 	}
+	// 	sort.Strings(names)
+	//
+	// 	fmt.Println("Global Flags:")
+	// 	for _, name := range names {
+	// 		fmt.Println(flags.Stringer(f.flags[name], maxLen))
+	// 	}
+	// }
 }
 
-func (c *Command) Flags() *FlagSet {
+func (c *Command) Flags() *flags.FlagSet {
 	if c.flags != nil {
 		return c.flags
 	}
-	c.flags = NewFlagSet()
+	c.flags = flags.NewFlagSet()
 	return c.flags
 }
 
-func (c *Command) PersistentFlags() *FlagSet {
+func (c *Command) PersistentFlags() *flags.FlagSet {
 	if c.persistentFlags != nil {
 		return c.persistentFlags
 	}
-	c.persistentFlags = NewFlagSet()
+	c.persistentFlags = flags.NewFlagSet()
 	return c.persistentFlags
 }
 
@@ -271,7 +272,7 @@ func (c *Command) execute(ctx *Context) error {
 		// cannot have a command with subcommands also have its own run func. because reasons
 		return fmt.Errorf("early termination: %s", c.Name)
 	}
-	fs := NewFlagSet()
+	fs := flags.NewFlagSet()
 
 	p := c.parent
 	for p != nil {
@@ -282,7 +283,7 @@ func (c *Command) execute(ctx *Context) error {
 	fs.AddFlagSet(c.PersistentFlags())
 	fs.AddFlagSet(c.Flags())
 
-	ctx.flagGetter = &FlagGetter{fs: fs}
+	ctx.flagGetter = flags.NewFlagGetter(fs)
 
 	for len(ctx.args) > 0 && isFlag(ctx.args[0]) {
 		arg := ctx.args[0][1:]
@@ -315,11 +316,11 @@ func (c *Command) execute(ctx *Context) error {
 						c.help()
 						return nil
 					}
-					f := fs.shortFlags[shorthand]
+					f := fs.FromShort(shorthand)
 					if f == nil {
 						return fmt.Errorf("missing flag: %s", string(shorthand))
 					}
-					if f.Type() != BoolFlagType {
+					if f.Type() != flags.BoolFlagType {
 						return fmt.Errorf("multi-flags can only be bool types")
 					}
 					if err := f.Set("true"); err != nil {
@@ -332,11 +333,11 @@ func (c *Command) execute(ctx *Context) error {
 					c.help()
 					return nil
 				}
-				f := fs.shortFlags[rune(flagStr[0])]
+				f := fs.FromShort(rune(flagStr[0]))
 				if f == nil {
 					return fmt.Errorf("missing flag: %v", flagStr[0])
 				}
-				if value == "" && f.Type() != BoolFlagType {
+				if value == "" && f.Type() != flags.BoolFlagType {
 					if len(ctx.args) > 1 {
 						if next := ctx.args[1]; next[0] != '-' {
 							value = next
@@ -350,11 +351,11 @@ func (c *Command) execute(ctx *Context) error {
 			}
 		} else {
 			// not a short flag
-			f := fs.flags[flagStr]
+			f := fs.FromName(flagStr)
 			if f == nil {
 				return fmt.Errorf("missing flag: %s", flagStr)
 			}
-			if value == "" && f.Type() != BoolFlagType {
+			if value == "" && f.Type() != flags.BoolFlagType {
 				if len(ctx.args) > 1 {
 					if next := ctx.args[1]; next[0] != '-' {
 						value = next

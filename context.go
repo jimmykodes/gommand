@@ -2,6 +2,8 @@ package gommand
 
 import (
 	"context"
+
+	"github.com/jimmykodes/gommand/flags"
 )
 
 type Context struct {
@@ -10,13 +12,13 @@ type Context struct {
 	preRuns    []func(*Context) error
 	postRuns   []func(*Context) error
 	deferPost  bool
-	flagGetter *FlagGetter
+	flagGetter *flags.FlagGetter
 }
 
 func (c *Context) Args() []string {
 	return c.args
 }
 
-func (c *Context) Flags() *FlagGetter {
+func (c *Context) Flags() *flags.FlagGetter {
 	return c.flagGetter
 }

@@ -1,4 +1,4 @@
-package gommand
+package flags
 
 type FlagSetOption interface {
 	Apply(*FlagSet)

@@ -2,6 +2,7 @@ package flags
 
 import (
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -24,7 +25,34 @@ const (
 	Uint64FlagType
 	Float32FlagType
 	Float64FlagType
+	StringSliceFlagType
+	BoolSliceFlagType
+	DurationSliceFlagType
+	IntSliceFlagType
+	Int8SliceFlagType
+	Int16SliceFlagType
+	Int32SliceFlagType
+	Int64SliceFlagType
+	UintSliceFlagType
+	Uint8SliceFlagType
+	Uint16SliceFlagType
+	Uint32SliceFlagType
+	Uint64SliceFlagType
+	Float32SliceFlagType
+	Float64SliceFlagType
 )
+
+var (
+	sliceSeparator = getSliceSep()
+)
+
+func getSliceSep() string {
+	sep := os.Getenv("GOMMAND_SLICE_SEPARATOR")
+	if sep == "" {
+		sep = ","
+	}
+	return sep
+}
 
 type Flag interface {
 	Type() FlagType

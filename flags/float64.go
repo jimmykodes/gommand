@@ -25,7 +25,7 @@ func (f *float64Flag) Set(s string) error {
     if err != nil {
         return err
     }
-    f.value = float64(v)
+    f.value = v
     f.set = true
     return nil
 }

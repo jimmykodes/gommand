@@ -27,7 +27,7 @@ func (f *{{ .Name }}Flag) Set(s string) error {
     if err != nil {
         return err
     }
-    f.value = {{ .Type }}(v)
+    f.value = {{ if .ConvertParsed }}{{ .Type }}(v){{ else }}v{{end}}
     {{ else }}
     f.value = s
     {{ end -}}

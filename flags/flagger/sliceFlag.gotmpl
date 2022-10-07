@@ -1,0 +1,80 @@
+package flags
+
+{{ if .Imports -}}import ({{ range .Imports }}
+	"{{ . }}"{{ end }}
+)
+
+{{ end -}}
+type {{ .Name }}SliceFlag struct {
+	*baseFlag
+
+	defValue []{{ .Type }}
+	value    []{{ .Type }}
+}
+
+func (f *{{ .Name }}SliceFlag) Type() FlagType { return {{ pascal .Name }}SliceFlagType }
+
+func (f *{{ .Name }}SliceFlag) Value() any {
+	if f.IsSet() {
+		return f.value
+	}
+	return f.defValue
+}
+
+func (f *{{ .Name }}SliceFlag) Set(s string) error {
+	pieces := strings.Split(s, sliceSeparator)
+	{{- if .ParseFunc }}
+	v := make([]{{ .Type }}, len(pieces))
+	for i, piece := range pieces {
+		val, err := {{ .ParseFunc }}
+		if err != nil {
+			return err
+		}
+		v[i] = {{ if .ConvertParsed }}{{ .Type }}(val){{ else }}val{{end}}
+	}
+	f.value = v
+	{{ else }}
+	f.value = pieces
+	{{ end -}}
+	f.set = true
+	return nil
+}
+
+func {{ pascal .Name }}SliceFlag(name string, value []{{ .Type }}, usage string) Flag {
+	return &{{ .Name }}SliceFlag{
+		baseFlag: &baseFlag{name: name, usage: usage},
+		defValue: value,
+	}
+}
+
+func {{ pascal .Name }}SliceFlagS(name string, shorthand rune, value []{{ .Type }}, usage string) Flag {
+	return &{{ .Name }}SliceFlag{
+		baseFlag: &baseFlag{name: name, short: shorthand, usage: usage},
+		defValue: value,
+	}
+}
+
+func (fs *FlagSet) {{ pascal .Name }}Slice(name string, value []{{ .Type }}, usage string) {
+	fs.addFlag({{ pascal .Name }}SliceFlag(name, value, usage))
+}
+
+func (fs *FlagSet) {{ pascal .Name }}SliceS(name string, shorthand rune, value []{{ .Type }}, usage string) {
+	fs.addFlag({{ pascal .Name }}SliceFlagS(name, shorthand, value, usage))
+}
+
+func (fs *FlagSet) {{ .Name }}SliceVal(name string) ([]{{ .Type }}, error) {
+	f, err := fs.flag(name, {{ pascal .Name }}SliceFlagType)
+	if err != nil {
+		return nil, err
+	}
+	return f.Value().([]{{ .Type }}), nil
+}
+
+func (g FlagGetter) Lookup{{ pascal .Name }}Slice(name string) ([]{{ .Type }}, error) {
+	return g.fs.{{ .Name }}SliceVal(name)
+}
+
+func (g FlagGetter) {{ pascal .Name }}Slice(name string) []{{ .Type }} {
+	v, _ := g.Lookup{{ pascal .Name }}Slice(name)
+	return v
+}

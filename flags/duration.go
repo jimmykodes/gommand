@@ -25,7 +25,7 @@ func (f *durationFlag) Set(s string) error {
     if err != nil {
         return err
     }
-    f.value = time.Duration(v)
+    f.value = v
     f.set = true
     return nil
 }

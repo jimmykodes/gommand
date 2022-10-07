@@ -20,7 +20,11 @@ var rootCmd = &gommand.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(n, d, i)
+		s, err := ctx.Flags().LookupStringSlice("strings")
+		if err != nil {
+			return err
+		}
+		fmt.Println(n, d, i, s)
 		return nil
 	},
 }
@@ -29,6 +33,7 @@ func init() {
 	rootCmd.Flags().Int("num", 10, "a number")
 	rootCmd.Flags().BoolS("dry-run", 'd', false, "dry run")
 	rootCmd.Flags().BoolS("insensitive", 'i', false, "case-insensitive")
+	rootCmd.Flags().StringSliceS("strings", 's', []string{"test", "taco"}, "some strings")
 	rootCmd.PersistentFlags().Int("mult", 100, "something")
 }
 

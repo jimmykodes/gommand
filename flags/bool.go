@@ -25,7 +25,7 @@ func (f *boolFlag) Set(s string) error {
     if err != nil {
         return err
     }
-    f.value = bool(v)
+    f.value = v
     f.set = true
     return nil
 }

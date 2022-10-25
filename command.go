@@ -337,8 +337,10 @@ func (c *Command) execute(ctx *Context) error {
 				if f == nil {
 					return fmt.Errorf("missing flag: %v", flagStr[0])
 				}
-				if value == "" && f.Type() != flags.BoolFlagType {
-					if len(ctx.args) > 1 {
+				if value == "" {
+					if f.Type() == flags.BoolFlagType {
+						value = "true"
+					} else if len(ctx.args) > 1 {
 						if next := ctx.args[1]; next[0] != '-' {
 							value = next
 							ctx.args = ctx.args[1:]

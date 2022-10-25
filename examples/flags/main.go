@@ -20,6 +20,9 @@ var rootCmd = &gommand.Command{
 		if err != nil {
 			return err
 		}
+		if !ctx.Flags().Flag("insensitive").IsSet() {
+			fmt.Println("insensitive used default value")
+		}
 		s, err := ctx.Flags().LookupStringSlice("strings")
 		if err != nil {
 			return err

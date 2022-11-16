@@ -164,9 +164,12 @@ func (c *Command) help() {
 	if len(c.commands) > 0 {
 		fmt.Print(" [commands]")
 	}
-	// if len(c.Flags().flags) > 0 || len(c.PersistentFlags().flags) > 0 {
-	// 	fmt.Print(" [flags]")
-	// }
+	flagFormatter := flags.NewFlagSetFormatter(c.Flags())
+	persistentFlagFormatter := flags.NewFlagSetFormatter(c.PersistentFlags())
+
+	if !flagFormatter.Empty() || !persistentFlagFormatter.Empty() {
+		fmt.Print(" [flags]")
+	}
 	fmt.Println()
 	fmt.Println()
 
@@ -180,40 +183,15 @@ func (c *Command) help() {
 	{
 		f := c.Flags()
 		f.BoolS("help", 'h', false, "show command help")
-
-		// names := make([]string, 0, len(f.flags))
-		// maxLen := 0
-		// for n, flag := range f.flags {
-		// 	names = append(names, n)
-		// 	if l := len(flag.Name()); l > maxLen {
-		// 		maxLen = l
-		// 	}
-		// }
-		// sort.Strings(names)
-		//
-		// fmt.Println("Flags:")
-		// for _, name := range names {
-		// 	fmt.Println(flags.flagStringer(f.flags[name], maxLen))
-		// }
+		fmt.Println("Flags:")
+		fmt.Println(flagFormatter.Format())
 	}
 
 	fmt.Println()
-	// if f := c.PersistentFlags(); len(f.flags) > 0 {
-	// 	names := make([]string, 0, len(f.flags))
-	// 	maxLen := 0
-	// 	for n, flag := range f.flags {
-	// 		names = append(names, n)
-	// 		if l := len(flag.Name()); l > maxLen {
-	// 			maxLen = l
-	// 		}
-	// 	}
-	// 	sort.Strings(names)
-	//
-	// 	fmt.Println("Global Flags:")
-	// 	for _, name := range names {
-	// 		fmt.Println(flags.Stringer(f.flags[name], maxLen))
-	// 	}
-	// }
+	if !persistentFlagFormatter.Empty() {
+		fmt.Println("Global Flags:")
+		fmt.Println(persistentFlagFormatter.Format())
+	}
 }
 
 func (c *Command) Flags() *flags.FlagSet {

@@ -143,8 +143,7 @@ func (c *Command) Execute() error {
 	return c.ExecuteContext(context.Background())
 }
 
-func (c *Command) SubCommand(cmd *Command, cmds ...*Command) {
-	c.subCommand(cmd)
+func (c *Command) SubCommand(cmds ...*Command) {
 	for _, command := range cmds {
 		c.subCommand(command)
 	}

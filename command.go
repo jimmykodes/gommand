@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	ErrNoRunner = errors.New("gommand: command has no run function")
+	ErrNoRunner     = errors.New("gommand: command has no run function")
+	ErrNoSubcommand = errors.New("gommand: must specify a subcommand")
 )
 
 // Command represents a command line command
@@ -97,8 +98,8 @@ type Command struct {
 	// c2 := &Command{Name: "c2", PersistentPostRun: func(*Context) error { fmt.Println("c2"); return nil }}
 	// c3 := &Command{Name: "c3", Run: func(*Context) error { fmt.Println("c3"); return nil }}
 	//
-	// c1.subCommand(c2)
-	// c2.subCommand(c3)
+	// c1.SubCommand(c2)
+	// c2.SubCommand(c3)
 	//
 	// when c3 is run, stdout will see
 	// c3
@@ -170,21 +171,18 @@ func (c *Command) help() {
 		fmt.Print(" [flags]")
 	}
 	fmt.Println()
-	fmt.Println()
 
 	if len(c.commands) > 0 {
+		fmt.Println()
 		fmt.Println("Available Commands:")
 		for k, command := range c.commands {
 			fmt.Println(" ", k, "-", command.Usage)
 		}
 	}
 
-	{
-		f := c.Flags()
-		f.BoolS("help", 'h', false, "show command help")
-		fmt.Println("Flags:")
-		fmt.Println(flagFormatter.Format())
-	}
+	fmt.Println()
+	fmt.Println("Flags:")
+	fmt.Println(flagFormatter.Format())
 
 	fmt.Println()
 	if !persistentFlagFormatter.Empty() {
@@ -197,7 +195,7 @@ func (c *Command) Flags() *flags.FlagSet {
 	if c.flags != nil {
 		return c.flags
 	}
-	c.flags = flags.NewFlagSet()
+	c.flags = flags.NewFlagSet(flags.WithHelpFlag())
 	return c.flags
 }
 
@@ -219,7 +217,15 @@ func (c *Command) subCommand(cmd *Command) {
 	cmd.parent = c
 }
 
+func (c *Command) hasSubCommands() bool {
+	return len(c.commands) > 0
+}
+
 func (c *Command) execute(ctx *Context) error {
+	// ################
+	// Append any persistent configs
+	// ################
+
 	// append pre run functions to be executed in order
 	if c.PersistentPreRun != nil {
 		ctx.preRuns = append(ctx.preRuns, c.PersistentPreRun)
@@ -233,22 +239,25 @@ func (c *Command) execute(ctx *Context) error {
 		ctx.deferPost = true
 	}
 
-	if len(ctx.args) > 0 && ctx.args[0] == "help" {
-		c.help()
-		return nil
+	// ################
+	// Walk the command tree
+	// ################
+
+	if c.hasSubCommands() {
+		if len(ctx.args) == 0 {
+			return fmt.Errorf("%s: %w", c.Name, ErrNoSubcommand)
+		}
+		next := c.commands[ctx.args[0]]
+		if next != nil {
+			ctx.args = ctx.args[1:]
+			return next.execute(ctx)
+		}
 	}
 
-	if c.commands != nil {
-		if len(ctx.args) > 0 {
-			next := c.commands[ctx.args[0]]
-			if next != nil {
-				ctx.args = ctx.args[1:]
-				return next.execute(ctx)
-			}
-		}
-		// cannot have a command with subcommands also have its own run func. because reasons
-		return fmt.Errorf("early termination: %s", c.Name)
-	}
+	// ################
+	// Process Flags
+	// ################
+
 	fs := flags.NewFlagSet()
 
 	p := c.parent
@@ -349,14 +358,22 @@ func (c *Command) execute(ctx *Context) error {
 		ctx.args = ctx.args[1:]
 	}
 
+	// ################
+	// Validate args
+	// ################
+
 	validator := c.ArgValidator
 	if validator == nil {
 		// default to allowing no args unless specified otherwise.
 		validator = ArgsNone()
 	}
 	if !validator(ctx.args) {
-		return fmt.Errorf("invalid args")
+		return fmt.Errorf("gommand: invalid args")
 	}
+
+	// ################
+	// Run the things!
+	// ################
 
 	for _, run := range ctx.preRuns {
 		if err := run(ctx); err != nil {

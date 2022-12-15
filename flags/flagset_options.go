@@ -21,3 +21,9 @@ func WithNoEnv() FlagSetOptionFunc {
 		s.noEnv = true
 	}
 }
+
+func WithHelpFlag() FlagSetOptionFunc {
+	return func(s *FlagSet) {
+		s.addHelpFlag()
+	}
+}

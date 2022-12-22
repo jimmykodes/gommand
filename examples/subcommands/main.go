@@ -10,14 +10,16 @@ import (
 
 var (
 	rootCmd = &gommand.Command{
-		Name:        "math",
-		Description: "a collection of math commands",
+		Name:         "math",
+		Description:  "a collection of math commands",
+		SilenceError: true,
 	}
 	sumCmd = &gommand.Command{
 		Name:         "sum",
 		Usage:        "sum [...n]",
 		Description:  "sum all supplied numbers",
 		ArgValidator: gommand.ArgsMin(1),
+		SilenceHelp:  true,
 		Run: func(ctx *gommand.Context) error {
 			var total int
 			for _, s := range ctx.Args() {
@@ -58,7 +60,6 @@ func init() {
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
 		os.Exit(1)
 	}
 }

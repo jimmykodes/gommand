@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	ErrNoRunner = errors.New("gommand: command has no run function")
+	ErrNoRunner     = errors.New("gommand: command has no run function")
+	ErrNoSubcommand = errors.New("gommand: must specify a subcommand")
 )
 
 // Command represents a command line command
@@ -97,8 +98,8 @@ type Command struct {
 	// c2 := &Command{Name: "c2", PersistentPostRun: func(*Context) error { fmt.Println("c2"); return nil }}
 	// c3 := &Command{Name: "c3", Run: func(*Context) error { fmt.Println("c3"); return nil }}
 	//
-	// c1.subCommand(c2)
-	// c2.subCommand(c3)
+	// c1.SubCommand(c2)
+	// c2.SubCommand(c3)
 	//
 	// when c3 is run, stdout will see
 	// c3
@@ -116,6 +117,15 @@ type Command struct {
 	// also defer their post run functions
 	DeferPost bool
 
+	// SilenceHelp will not print the help message if the command exits with an error.
+	// This field will propogate to subcommands and cannot be overwritten by the child, so if any
+	// point of a command's upstream lineage has the value set, the help message will be silenced
+	SilenceHelp bool
+
+	// SilenceError is like SilenceHelp but does not print the "Error: xxx" message when the command
+	// exits with an error
+	SilenceError bool
+
 	parent   *Command
 	commands map[string]*Command
 
@@ -128,12 +138,17 @@ type Command struct {
 func (c *Command) ExecuteContext(ctx context.Context) error {
 	args := os.Args[1:]
 
-	err := c.execute(&Context{
+	cmd, err := c.execute(&Context{
 		Context: ctx,
 		args:    args,
 	})
 	if mErr := multierr.Append(err, multierr.Combine(c.errs...)); mErr != nil {
-		// todo: print usage and error(s)
+		if !cmd.silenceError() {
+			fmt.Println("Error:", mErr)
+		}
+		if !cmd.silenceHelp() {
+			cmd.help()
+		}
 		return mErr
 	}
 	return nil
@@ -147,6 +162,27 @@ func (c *Command) SubCommand(cmds ...*Command) {
 	for _, command := range cmds {
 		c.subCommand(command)
 	}
+}
+
+// todo: should be able to set something coming down the command call stack, rather than
+// having to retrace it back up to see if anything in our lineage has this value set
+// do the same for silenceHelp
+func (c *Command) silenceError() bool {
+	for upstream := c; upstream != nil; upstream = upstream.parent {
+		if upstream.SilenceError {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Command) silenceHelp() bool {
+	for upstream := c; upstream != nil; upstream = upstream.parent {
+		if upstream.SilenceHelp {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Command) help() {
@@ -170,21 +206,18 @@ func (c *Command) help() {
 		fmt.Print(" [flags]")
 	}
 	fmt.Println()
-	fmt.Println()
 
 	if len(c.commands) > 0 {
+		fmt.Println()
 		fmt.Println("Available Commands:")
 		for k, command := range c.commands {
 			fmt.Println(" ", k, "-", command.Usage)
 		}
 	}
 
-	{
-		f := c.Flags()
-		f.BoolS("help", 'h', false, "show command help")
-		fmt.Println("Flags:")
-		fmt.Println(flagFormatter.Format())
-	}
+	fmt.Println()
+	fmt.Println("Flags:")
+	fmt.Println(flagFormatter.Format())
 
 	fmt.Println()
 	if !persistentFlagFormatter.Empty() {
@@ -197,7 +230,7 @@ func (c *Command) Flags() *flags.FlagSet {
 	if c.flags != nil {
 		return c.flags
 	}
-	c.flags = flags.NewFlagSet()
+	c.flags = flags.NewFlagSet(flags.WithHelpFlag())
 	return c.flags
 }
 
@@ -219,7 +252,15 @@ func (c *Command) subCommand(cmd *Command) {
 	cmd.parent = c
 }
 
-func (c *Command) execute(ctx *Context) error {
+func (c *Command) hasSubCommands() bool {
+	return len(c.commands) > 0
+}
+
+func (c *Command) execute(ctx *Context) (*Command, error) {
+	// ################
+	// Append any persistent configs
+	// ################
+
 	// append pre run functions to be executed in order
 	if c.PersistentPreRun != nil {
 		ctx.preRuns = append(ctx.preRuns, c.PersistentPreRun)
@@ -233,22 +274,25 @@ func (c *Command) execute(ctx *Context) error {
 		ctx.deferPost = true
 	}
 
-	if len(ctx.args) > 0 && ctx.args[0] == "help" {
-		c.help()
-		return nil
+	// ################
+	// Walk the command tree
+	// ################
+
+	if c.hasSubCommands() {
+		if len(ctx.args) == 0 {
+			return c, fmt.Errorf("%s: %w", c.Name, ErrNoSubcommand)
+		}
+		next := c.commands[ctx.args[0]]
+		if next != nil {
+			ctx.args = ctx.args[1:]
+			return next.execute(ctx)
+		}
 	}
 
-	if c.commands != nil {
-		if len(ctx.args) > 0 {
-			next := c.commands[ctx.args[0]]
-			if next != nil {
-				ctx.args = ctx.args[1:]
-				return next.execute(ctx)
-			}
-		}
-		// cannot have a command with subcommands also have its own run func. because reasons
-		return fmt.Errorf("early termination: %s", c.Name)
-	}
+	// ################
+	// Process Flags
+	// ################
+
 	fs := flags.NewFlagSet()
 
 	p := c.parent
@@ -279,40 +323,40 @@ func (c *Command) execute(ctx *Context) error {
 		}
 		if flagStr == "help" {
 			c.help()
-			return nil
+			return c, nil
 		}
 
 		if isShort {
 			if len(flagStr) > 1 {
 				// mutli-bool flags
 				if value != "" {
-					return fmt.Errorf("invalid flag. cannot assign value to multi-bool flag")
+					return c, fmt.Errorf("invalid flag. cannot assign value to multi-bool flag")
 				}
 				for _, shorthand := range flagStr {
 					if shorthand == 'h' {
 						c.help()
-						return nil
+						return c, nil
 					}
 					f := fs.FromShort(shorthand)
 					if f == nil {
-						return fmt.Errorf("missing flag: %s", string(shorthand))
+						return c, fmt.Errorf("missing flag: %s", string(shorthand))
 					}
 					if f.Type() != flags.BoolFlagType {
-						return fmt.Errorf("multi-flags can only be bool types")
+						return c, fmt.Errorf("multi-flags can only be bool types")
 					}
 					if err := f.Set("true"); err != nil {
-						return err
+						return c, err
 					}
 				}
 			} else {
 				// single short flag
 				if flagStr == "h" {
 					c.help()
-					return nil
+					return c, nil
 				}
 				f := fs.FromShort(rune(flagStr[0]))
 				if f == nil {
-					return fmt.Errorf("missing flag: %v", flagStr[0])
+					return c, fmt.Errorf("missing flag: %v", flagStr[0])
 				}
 				if value == "" {
 					if f.Type() == flags.BoolFlagType {
@@ -325,14 +369,14 @@ func (c *Command) execute(ctx *Context) error {
 					}
 				}
 				if err := f.Set(value); err != nil {
-					return err
+					return c, err
 				}
 			}
 		} else {
 			// not a short flag
 			f := fs.FromName(flagStr)
 			if f == nil {
-				return fmt.Errorf("missing flag: %s", flagStr)
+				return c, fmt.Errorf("missing flag: %s", flagStr)
 			}
 			if value == "" && f.Type() != flags.BoolFlagType {
 				if len(ctx.args) > 1 {
@@ -343,11 +387,15 @@ func (c *Command) execute(ctx *Context) error {
 				}
 			}
 			if err := f.Set(value); err != nil {
-				return err
+				return c, err
 			}
 		}
 		ctx.args = ctx.args[1:]
 	}
+
+	// ################
+	// Validate args
+	// ################
 
 	validator := c.ArgValidator
 	if validator == nil {
@@ -355,17 +403,21 @@ func (c *Command) execute(ctx *Context) error {
 		validator = ArgsNone()
 	}
 	if !validator(ctx.args) {
-		return fmt.Errorf("invalid args")
+		return c, fmt.Errorf("gommand: invalid args")
 	}
+
+	// ################
+	// Run the things!
+	// ################
 
 	for _, run := range ctx.preRuns {
 		if err := run(ctx); err != nil {
-			return err
+			return c, err
 		}
 	}
 	if c.PreRun != nil {
 		if err := c.PreRun(ctx); err != nil {
-			return err
+			return c, err
 		}
 	}
 
@@ -397,10 +449,9 @@ func (c *Command) execute(ctx *Context) error {
 		}
 	}()
 	if c.Run == nil {
-		return ErrNoRunner
+		return c, ErrNoRunner
 	}
-	runErr = c.Run(ctx)
-	return runErr
+	return c, c.Run(ctx)
 }
 
 func isFlag(s string) bool {

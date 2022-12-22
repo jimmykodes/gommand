@@ -44,6 +44,10 @@ func (fs *FlagSet) addFlag(f Flag) {
 	}
 }
 
+func (fs *FlagSet) addHelpFlag() {
+	fs.BoolS("help", 'h', false, "show this help message")
+}
+
 func (fs *FlagSet) AddFlagSet(set *FlagSet) {
 	for name, flag := range set.flags {
 		fs.flags[name] = flag

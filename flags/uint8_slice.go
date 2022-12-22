@@ -51,11 +51,11 @@ func Uint8SliceFlagS(name string, shorthand rune, value []uint8, usage string) F
 }
 
 func (fs *FlagSet) Uint8Slice(name string, value []uint8, usage string) {
-	fs.addFlag(Uint8SliceFlag(name, value, usage))
+	fs.AddFlag(Uint8SliceFlag(name, value, usage))
 }
 
 func (fs *FlagSet) Uint8SliceS(name string, shorthand rune, value []uint8, usage string) {
-	fs.addFlag(Uint8SliceFlagS(name, shorthand, value, usage))
+	fs.AddFlag(Uint8SliceFlagS(name, shorthand, value, usage))
 }
 
 func (fs *FlagSet) uint8SliceVal(name string) ([]uint8, error) {

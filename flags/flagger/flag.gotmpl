@@ -50,11 +50,11 @@ func {{ pascal .Name }}FlagS(name string, shorthand rune, value {{ .Type }}, usa
 }
 
 func (fs *FlagSet) {{ pascal .Name }}(name string, value {{ .Type }}, usage string) {
-	fs.addFlag({{ pascal .Name }}Flag(name, value, usage))
+	fs.AddFlag({{ pascal .Name }}Flag(name, value, usage))
 }
 
 func (fs *FlagSet) {{ pascal .Name }}S(name string, shorthand rune, value {{ .Type }}, usage string) {
-	fs.addFlag({{ pascal .Name }}FlagS(name, shorthand, value, usage))
+	fs.AddFlag({{ pascal .Name }}FlagS(name, shorthand, value, usage))
 }
 
 func (fs *FlagSet) {{ .Name }}Val(name string) ({{ .Type }}, error) {

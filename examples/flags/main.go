@@ -5,10 +5,20 @@ import (
 	"os"
 
 	"github.com/jimmykodes/gommand"
+	"github.com/jimmykodes/gommand/flags"
 )
 
 var rootCmd = &gommand.Command{
 	Name: "root",
+	Flags: []flags.Flag{
+		flags.IntFlag("num", 10, "a number"),
+		flags.BoolFlagS("dry-run", 'd', false, "dry run"),
+		flags.BoolFlagS("insensitive", 'i', false, "case-insensitive"),
+		flags.StringSliceFlagS("strings", 's', []string{"test", "taco"}, "some strings"),
+	},
+	PersistentFlags: []flags.Flag{
+		flags.IntFlag("mult", 100, "something"),
+	},
 	Run: func(ctx *gommand.Context) error {
 		fmt.Println("root called")
 		n := ctx.Flags().Int("num")
@@ -32,17 +42,8 @@ var rootCmd = &gommand.Command{
 	},
 }
 
-func init() {
-	rootCmd.Flags().Int("num", 10, "a number")
-	rootCmd.Flags().BoolS("dry-run", 'd', false, "dry run")
-	rootCmd.Flags().BoolS("insensitive", 'i', false, "case-insensitive")
-	rootCmd.Flags().StringSliceS("strings", 's', []string{"test", "taco"}, "some strings")
-	rootCmd.PersistentFlags().Int("mult", 100, "something")
-}
-
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
 		os.Exit(1)
 	}
 }

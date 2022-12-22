@@ -45,11 +45,11 @@ func Int16FlagS(name string, shorthand rune, value int16, usage string) Flag {
 }
 
 func (fs *FlagSet) Int16(name string, value int16, usage string) {
-	fs.addFlag(Int16Flag(name, value, usage))
+	fs.AddFlag(Int16Flag(name, value, usage))
 }
 
 func (fs *FlagSet) Int16S(name string, shorthand rune, value int16, usage string) {
-	fs.addFlag(Int16FlagS(name, shorthand, value, usage))
+	fs.AddFlag(Int16FlagS(name, shorthand, value, usage))
 }
 
 func (fs *FlagSet) int16Val(name string) (int16, error) {

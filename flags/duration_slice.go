@@ -51,11 +51,11 @@ func DurationSliceFlagS(name string, shorthand rune, value []time.Duration, usag
 }
 
 func (fs *FlagSet) DurationSlice(name string, value []time.Duration, usage string) {
-	fs.addFlag(DurationSliceFlag(name, value, usage))
+	fs.AddFlag(DurationSliceFlag(name, value, usage))
 }
 
 func (fs *FlagSet) DurationSliceS(name string, shorthand rune, value []time.Duration, usage string) {
-	fs.addFlag(DurationSliceFlagS(name, shorthand, value, usage))
+	fs.AddFlag(DurationSliceFlagS(name, shorthand, value, usage))
 }
 
 func (fs *FlagSet) durationSliceVal(name string) ([]time.Duration, error) {

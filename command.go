@@ -61,6 +61,9 @@ type Command struct {
 	// If this is not defined ArgsNone is used.
 	ArgValidator ArgValidator
 
+	Flags           []flags.Flag
+	PersistentFlags []flags.Flag
+
 	// Run is the core function the command should execute
 	Run func(*Context) error
 
@@ -199,8 +202,8 @@ func (c *Command) help() {
 	if len(c.commands) > 0 {
 		fmt.Print(" [commands]")
 	}
-	flagFormatter := flags.NewFlagSetFormatter(c.Flags())
-	persistentFlagFormatter := flags.NewFlagSetFormatter(c.PersistentFlags())
+	flagFormatter := flags.NewFlagSetFormatter(c.FlagSet())
+	persistentFlagFormatter := flags.NewFlagSetFormatter(c.PersistentFlagSet())
 
 	if !flagFormatter.Empty() || !persistentFlagFormatter.Empty() {
 		fmt.Print(" [flags]")
@@ -226,19 +229,25 @@ func (c *Command) help() {
 	}
 }
 
-func (c *Command) Flags() *flags.FlagSet {
+func (c *Command) FlagSet() *flags.FlagSet {
 	if c.flags != nil {
 		return c.flags
 	}
 	c.flags = flags.NewFlagSet(flags.WithHelpFlag())
+	for _, flag := range c.Flags {
+		c.flags.AddFlag(flag)
+	}
 	return c.flags
 }
 
-func (c *Command) PersistentFlags() *flags.FlagSet {
+func (c *Command) PersistentFlagSet() *flags.FlagSet {
 	if c.persistentFlags != nil {
 		return c.persistentFlags
 	}
 	c.persistentFlags = flags.NewFlagSet()
+	for _, flag := range c.PersistentFlags {
+		c.persistentFlags.AddFlag(flag)
+	}
 	return c.persistentFlags
 }
 
@@ -295,14 +304,11 @@ func (c *Command) execute(ctx *Context) (*Command, error) {
 
 	fs := flags.NewFlagSet()
 
-	p := c.parent
-	for p != nil {
-		fs.AddFlagSet(p.PersistentFlags())
-		p = p.parent
+	for p := c; p != nil; p = p.parent {
+		fs.AddFlagSet(p.PersistentFlagSet())
 	}
 
-	fs.AddFlagSet(c.PersistentFlags())
-	fs.AddFlagSet(c.Flags())
+	fs.AddFlagSet(c.FlagSet())
 
 	ctx.flagGetter = flags.NewFlagGetter(fs)
 

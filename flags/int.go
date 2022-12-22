@@ -45,11 +45,11 @@ func IntFlagS(name string, shorthand rune, value int, usage string) Flag {
 }
 
 func (fs *FlagSet) Int(name string, value int, usage string) {
-	fs.addFlag(IntFlag(name, value, usage))
+	fs.AddFlag(IntFlag(name, value, usage))
 }
 
 func (fs *FlagSet) IntS(name string, shorthand rune, value int, usage string) {
-	fs.addFlag(IntFlagS(name, shorthand, value, usage))
+	fs.AddFlag(IntFlagS(name, shorthand, value, usage))
 }
 
 func (fs *FlagSet) intVal(name string) (int, error) {

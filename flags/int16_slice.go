@@ -51,11 +51,11 @@ func Int16SliceFlagS(name string, shorthand rune, value []int16, usage string) F
 }
 
 func (fs *FlagSet) Int16Slice(name string, value []int16, usage string) {
-	fs.addFlag(Int16SliceFlag(name, value, usage))
+	fs.AddFlag(Int16SliceFlag(name, value, usage))
 }
 
 func (fs *FlagSet) Int16SliceS(name string, shorthand rune, value []int16, usage string) {
-	fs.addFlag(Int16SliceFlagS(name, shorthand, value, usage))
+	fs.AddFlag(Int16SliceFlagS(name, shorthand, value, usage))
 }
 
 func (fs *FlagSet) int16SliceVal(name string) ([]int16, error) {

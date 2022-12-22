@@ -37,11 +37,11 @@ func StringFlagS(name string, shorthand rune, value string, usage string) Flag {
 }
 
 func (fs *FlagSet) String(name string, value string, usage string) {
-	fs.addFlag(StringFlag(name, value, usage))
+	fs.AddFlag(StringFlag(name, value, usage))
 }
 
 func (fs *FlagSet) StringS(name string, shorthand rune, value string, usage string) {
-	fs.addFlag(StringFlagS(name, shorthand, value, usage))
+	fs.AddFlag(StringFlagS(name, shorthand, value, usage))
 }
 
 func (fs *FlagSet) stringVal(name string) (string, error) {

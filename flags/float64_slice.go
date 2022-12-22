@@ -51,11 +51,11 @@ func Float64SliceFlagS(name string, shorthand rune, value []float64, usage strin
 }
 
 func (fs *FlagSet) Float64Slice(name string, value []float64, usage string) {
-	fs.addFlag(Float64SliceFlag(name, value, usage))
+	fs.AddFlag(Float64SliceFlag(name, value, usage))
 }
 
 func (fs *FlagSet) Float64SliceS(name string, shorthand rune, value []float64, usage string) {
-	fs.addFlag(Float64SliceFlagS(name, shorthand, value, usage))
+	fs.AddFlag(Float64SliceFlagS(name, shorthand, value, usage))
 }
 
 func (fs *FlagSet) float64SliceVal(name string) ([]float64, error) {

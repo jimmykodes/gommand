@@ -45,11 +45,11 @@ func DurationFlagS(name string, shorthand rune, value time.Duration, usage strin
 }
 
 func (fs *FlagSet) Duration(name string, value time.Duration, usage string) {
-	fs.addFlag(DurationFlag(name, value, usage))
+	fs.AddFlag(DurationFlag(name, value, usage))
 }
 
 func (fs *FlagSet) DurationS(name string, shorthand rune, value time.Duration, usage string) {
-	fs.addFlag(DurationFlagS(name, shorthand, value, usage))
+	fs.AddFlag(DurationFlagS(name, shorthand, value, usage))
 }
 
 func (fs *FlagSet) durationVal(name string) (time.Duration, error) {

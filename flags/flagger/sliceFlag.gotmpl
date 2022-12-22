@@ -55,11 +55,11 @@ func {{ pascal .Name }}SliceFlagS(name string, shorthand rune, value []{{ .Type 
 }
 
 func (fs *FlagSet) {{ pascal .Name }}Slice(name string, value []{{ .Type }}, usage string) {
-	fs.addFlag({{ pascal .Name }}SliceFlag(name, value, usage))
+	fs.AddFlag({{ pascal .Name }}SliceFlag(name, value, usage))
 }
 
 func (fs *FlagSet) {{ pascal .Name }}SliceS(name string, shorthand rune, value []{{ .Type }}, usage string) {
-	fs.addFlag({{ pascal .Name }}SliceFlagS(name, shorthand, value, usage))
+	fs.AddFlag({{ pascal .Name }}SliceFlagS(name, shorthand, value, usage))
 }
 
 func (fs *FlagSet) {{ .Name }}SliceVal(name string) ([]{{ .Type }}, error) {

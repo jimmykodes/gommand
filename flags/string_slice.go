@@ -42,11 +42,11 @@ func StringSliceFlagS(name string, shorthand rune, value []string, usage string)
 }
 
 func (fs *FlagSet) StringSlice(name string, value []string, usage string) {
-	fs.addFlag(StringSliceFlag(name, value, usage))
+	fs.AddFlag(StringSliceFlag(name, value, usage))
 }
 
 func (fs *FlagSet) StringSliceS(name string, shorthand rune, value []string, usage string) {
-	fs.addFlag(StringSliceFlagS(name, shorthand, value, usage))
+	fs.AddFlag(StringSliceFlagS(name, shorthand, value, usage))
 }
 
 func (fs *FlagSet) stringSliceVal(name string) ([]string, error) {

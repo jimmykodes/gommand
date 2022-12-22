@@ -51,11 +51,11 @@ func BoolSliceFlagS(name string, shorthand rune, value []bool, usage string) Fla
 }
 
 func (fs *FlagSet) BoolSlice(name string, value []bool, usage string) {
-	fs.addFlag(BoolSliceFlag(name, value, usage))
+	fs.AddFlag(BoolSliceFlag(name, value, usage))
 }
 
 func (fs *FlagSet) BoolSliceS(name string, shorthand rune, value []bool, usage string) {
-	fs.addFlag(BoolSliceFlagS(name, shorthand, value, usage))
+	fs.AddFlag(BoolSliceFlagS(name, shorthand, value, usage))
 }
 
 func (fs *FlagSet) boolSliceVal(name string) ([]bool, error) {

@@ -45,11 +45,11 @@ func Uint32FlagS(name string, shorthand rune, value uint32, usage string) Flag {
 }
 
 func (fs *FlagSet) Uint32(name string, value uint32, usage string) {
-	fs.addFlag(Uint32Flag(name, value, usage))
+	fs.AddFlag(Uint32Flag(name, value, usage))
 }
 
 func (fs *FlagSet) Uint32S(name string, shorthand rune, value uint32, usage string) {
-	fs.addFlag(Uint32FlagS(name, shorthand, value, usage))
+	fs.AddFlag(Uint32FlagS(name, shorthand, value, usage))
 }
 
 func (fs *FlagSet) uint32Val(name string) (uint32, error) {

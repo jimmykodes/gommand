@@ -36,7 +36,7 @@ func (fs *FlagSet) FromShort(short rune) Flag {
 	return fs.shortFlags[short]
 }
 
-func (fs *FlagSet) addFlag(f Flag) {
+func (fs *FlagSet) AddFlag(f Flag) {
 	f.SetEnvPrefix(fs.envPrefix)
 	fs.flags[f.Name()] = f
 	if f.Short() != 0 {

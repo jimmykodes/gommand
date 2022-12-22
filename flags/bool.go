@@ -45,11 +45,11 @@ func BoolFlagS(name string, shorthand rune, value bool, usage string) Flag {
 }
 
 func (fs *FlagSet) Bool(name string, value bool, usage string) {
-	fs.addFlag(BoolFlag(name, value, usage))
+	fs.AddFlag(BoolFlag(name, value, usage))
 }
 
 func (fs *FlagSet) BoolS(name string, shorthand rune, value bool, usage string) {
-	fs.addFlag(BoolFlagS(name, shorthand, value, usage))
+	fs.AddFlag(BoolFlagS(name, shorthand, value, usage))
 }
 
 func (fs *FlagSet) boolVal(name string) (bool, error) {

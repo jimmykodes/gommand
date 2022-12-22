@@ -143,11 +143,11 @@ func (c *Command) ExecuteContext(ctx context.Context) error {
 		args:    args,
 	})
 	if mErr := multierr.Append(err, multierr.Combine(c.errs...)); mErr != nil {
-		if !cmd.silenceError() {
-			fmt.Println("Error:", mErr)
-		}
 		if !cmd.silenceHelp() {
 			cmd.help()
+		}
+		if !cmd.silenceError() {
+			fmt.Println("Error:", mErr)
 		}
 		return mErr
 	}

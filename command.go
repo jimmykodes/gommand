@@ -61,7 +61,10 @@ type Command struct {
 	// If this is not defined ArgsNone is used.
 	ArgValidator ArgValidator
 
-	Flags           []flags.Flag
+	// Flags are a slice of flags.Flag that will be used to initialize the command's FlagSet
+	Flags []flags.Flag
+
+	// PersistentFlags are a slice of flags.Flag that will be used to initialize the command's PersistentFlagSet
 	PersistentFlags []flags.Flag
 
 	// Run is the core function the command should execute
@@ -203,7 +206,11 @@ func (c *Command) help() {
 		fmt.Print(" [commands]")
 	}
 	flagFormatter := flags.NewFlagSetFormatter(c.FlagSet())
-	persistentFlagFormatter := flags.NewFlagSetFormatter(c.PersistentFlagSet())
+	pfs := flags.NewFlagSet()
+	for p := c; p != nil; p = p.parent {
+		pfs.AddFlagSet(p.PersistentFlagSet())
+	}
+	persistentFlagFormatter := flags.NewFlagSetFormatter(pfs)
 
 	if !flagFormatter.Empty() || !persistentFlagFormatter.Empty() {
 		fmt.Print(" [flags]")

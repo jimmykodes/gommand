@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"go.uber.org/multierr"
@@ -133,7 +134,7 @@ type Command struct {
 	SilenceError bool
 
 	parent   *Command
-	commands map[string]*Command
+	commands commands
 
 	flags           *flags.FlagSet
 	persistentFlags *flags.FlagSet
@@ -205,34 +206,31 @@ func (c *Command) help() {
 	if len(c.commands) > 0 {
 		fmt.Print(" [commands]")
 	}
-	flagFormatter := flags.NewFlagSetFormatter(c.FlagSet())
 	pfs := flags.NewFlagSet()
 	for p := c; p != nil; p = p.parent {
 		pfs.AddFlagSet(p.PersistentFlagSet())
 	}
-	persistentFlagFormatter := flags.NewFlagSetFormatter(pfs)
 
-	if !flagFormatter.Empty() || !persistentFlagFormatter.Empty() {
+	fsStr := c.FlagSet().Repr()
+	pfsStr := pfs.Repr()
+	if fsStr != "" {
 		fmt.Print(" [flags]")
 	}
 	fmt.Println()
+	fmt.Println()
 
 	if len(c.commands) > 0 {
-		fmt.Println()
 		fmt.Println("Available Commands:")
-		for k, command := range c.commands {
-			fmt.Println(" ", k, "-", command.Usage)
-		}
+		fmt.Println(c.commands)
 	}
 
-	fmt.Println()
 	fmt.Println("Flags:")
-	fmt.Println(flagFormatter.Format())
+	fmt.Println(fsStr)
 
-	fmt.Println()
-	if !persistentFlagFormatter.Empty() {
+	if pfsStr != "" {
+		fmt.Println()
 		fmt.Println("Global Flags:")
-		fmt.Println(persistentFlagFormatter.Format())
+		fmt.Println(pfsStr)
 	}
 }
 
@@ -465,6 +463,28 @@ func (c *Command) execute(ctx *Context) (*Command, error) {
 		return c, ErrNoRunner
 	}
 	return c, c.Run(ctx)
+}
+
+type commands map[string]*Command
+
+func (c commands) String() string {
+	var (
+		sb     strings.Builder
+		maxKey int
+		keys   = make([]string, 0, len(c))
+	)
+	for k := range c {
+		keys = append(keys, k)
+		if l := len(k); l > maxKey {
+			maxKey = l
+		}
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		padding := maxKey - len(k)
+		_, _ = fmt.Fprintf(&sb, "  %s%s  %s\n", k, strings.Repeat(" ", padding), c[k].Usage)
+	}
+	return sb.String()
 }
 
 func isFlag(s string) bool {

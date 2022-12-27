@@ -3,6 +3,8 @@ package flags
 import (
 	"errors"
 	"os"
+	"sort"
+	"strings"
 
 	"github.com/jimmykodes/strman"
 )
@@ -42,6 +44,23 @@ func (fs *FlagSet) AddFlag(f Flag) {
 	if f.Short() != 0 {
 		fs.shortFlags[f.Short()] = f
 	}
+}
+
+func (fs *FlagSet) Repr() string {
+	names := make([]string, 0, len(fs.flags))
+	maxLen := 0
+	for n, flag := range fs.flags {
+		names = append(names, n)
+		if l := len(flag.Name()); l > maxLen {
+			maxLen = l
+		}
+	}
+	sort.Strings(names)
+	strs := make([]string, len(names))
+	for i, name := range names {
+		strs[i] = Stringer(fs.flags[name], maxLen)
+	}
+	return strings.Join(strs, "\n")
 }
 
 func (fs *FlagSet) addHelpFlag() {

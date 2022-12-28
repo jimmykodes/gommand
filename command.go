@@ -11,11 +11,13 @@ import (
 	"go.uber.org/multierr"
 
 	"github.com/jimmykodes/gommand/flags"
+	"github.com/jimmykodes/gommand/internal/lexer"
 )
 
 var (
 	ErrNoRunner     = errors.New("gommand: command has no run function")
 	ErrNoSubcommand = errors.New("gommand: must specify a subcommand")
+	errShowHelp     = errors.New("show help")
 )
 
 // Command represents a command line command
@@ -149,6 +151,10 @@ func (c *Command) ExecuteContext(ctx context.Context) error {
 		Context: ctx,
 		args:    args,
 	})
+	if errors.Is(err, errShowHelp) {
+		cmd.help()
+		return nil
+	}
 	if mErr := multierr.Append(err, multierr.Combine(c.errs...)); mErr != nil {
 		if !cmd.silenceHelp() {
 			cmd.help()
@@ -317,92 +323,88 @@ func (c *Command) execute(ctx *Context) (*Command, error) {
 
 	ctx.flagGetter = flags.NewFlagGetter(fs)
 
-	for len(ctx.args) > 0 && isFlag(ctx.args[0]) {
-		arg := ctx.args[0][1:]
-		isShort := true
-		if arg[0] == '-' {
-			isShort = false
-			arg = arg[1:]
+	var (
+		argLexer    = lexer.New(ctx.args)
+		args        []string
+		collectArgs bool
+	)
+	for {
+		token := argLexer.Read()
+		if token == nil {
+			break
 		}
-		s := strings.SplitN(arg, "=", 2)
-		var (
-			flagStr = s[0]
-			value   string
-		)
-		if len(s) == 2 {
-			value = s[1]
-		}
-		if flagStr == "help" {
-			c.help()
-			return c, nil
-		}
-
-		if isShort {
-			if len(flagStr) > 1 {
-				// mutli-bool flags
-				if value != "" {
-					return c, fmt.Errorf("invalid flag. cannot assign value to multi-bool flag")
+		switch token.Type {
+		case lexer.ValueType:
+			collectArgs = true
+			args = append(args, token.Value)
+		case lexer.MultiFlagType:
+			if collectArgs {
+				return c, fmt.Errorf("gommand: invalid flag position: flags must come before args: -%s", token.Name)
+			}
+			if token.Value != "" {
+				return c, fmt.Errorf("gommand: invalid multi-flag: cannot assign value to multi-flag: -%s", token.Name)
+			}
+			for _, chr := range token.Name {
+				if chr == 'h' {
+					return c, errShowHelp
 				}
-				for _, shorthand := range flagStr {
-					if shorthand == 'h' {
-						c.help()
-						return c, nil
-					}
-					f := fs.FromShort(shorthand)
-					if f == nil {
-						return c, fmt.Errorf("missing flag: %s", string(shorthand))
-					}
-					if f.Type() != flags.BoolFlagType {
-						return c, fmt.Errorf("multi-flags can only be bool types")
-					}
-					if err := f.Set("true"); err != nil {
-						return c, err
+				f := fs.FromShort(chr)
+				if f == nil {
+					return c, fmt.Errorf("gommand: missing flag: -%s", string(chr))
+				}
+				if f.Type() != flags.BoolFlagType {
+					return c, fmt.Errorf("gommand: invalid multi-flag: -%s is not a boolean flag", string(chr))
+				}
+				_ = f.Set("true")
+			}
+		default:
+			if collectArgs {
+				prefix := "-"
+				if token.Type == lexer.LongFlagType {
+					prefix += "-"
+				}
+				return c, fmt.Errorf("gommand: invalid flag position: flags must come before args: %s%s", prefix, token.Name)
+			}
+			var f flags.Flag
+			switch token.Type {
+			case lexer.ShortFlagType:
+				if token.Name == "h" {
+					return c, errShowHelp
+				}
+				f = fs.FromShort(rune(token.Name[0]))
+			case lexer.LongFlagType:
+				if token.Name == "help" {
+					return c, errShowHelp
+				}
+				f = fs.FromName(token.Name)
+			}
+
+			if f == nil {
+				prefix := "-"
+				if token.Type == lexer.LongFlagType {
+					prefix += "-"
+				}
+				return c, fmt.Errorf("gommand: missing flag: %s%s", prefix, token.Name)
+			}
+
+			var setErr error
+			if token.Value == "" {
+				if f.Type() == flags.BoolFlagType {
+					setErr = f.Set("true")
+				} else {
+					if peekToken := argLexer.Peek(); peekToken != nil && peekToken.Type == lexer.ValueType {
+						setErr = f.Set(argLexer.Read().Value)
 					}
 				}
 			} else {
-				// single short flag
-				if flagStr == "h" {
-					c.help()
-					return c, nil
-				}
-				f := fs.FromShort(rune(flagStr[0]))
-				if f == nil {
-					return c, fmt.Errorf("missing flag: %v", flagStr[0])
-				}
-				if value == "" {
-					if f.Type() == flags.BoolFlagType {
-						value = "true"
-					} else if len(ctx.args) > 1 {
-						if next := ctx.args[1]; next[0] != '-' {
-							value = next
-							ctx.args = ctx.args[1:]
-						}
-					}
-				}
-				if err := f.Set(value); err != nil {
-					return c, err
-				}
+				setErr = f.Set(token.Value)
 			}
-		} else {
-			// not a short flag
-			f := fs.FromName(flagStr)
-			if f == nil {
-				return c, fmt.Errorf("missing flag: %s", flagStr)
-			}
-			if value == "" && f.Type() != flags.BoolFlagType {
-				if len(ctx.args) > 1 {
-					if next := ctx.args[1]; next[0] != '-' {
-						value = next
-						ctx.args = ctx.args[1:]
-					}
-				}
-			}
-			if err := f.Set(value); err != nil {
-				return c, err
+			if setErr != nil {
+				return c, setErr
 			}
 		}
-		ctx.args = ctx.args[1:]
 	}
+	ctx.args = args
 
 	// ################
 	// Validate args
@@ -485,8 +487,4 @@ func (c commands) String() string {
 		_, _ = fmt.Fprintf(&sb, "  %s%s  %s\n", k, strings.Repeat(" ", padding), c[k].Usage)
 	}
 	return sb.String()
-}
-
-func isFlag(s string) bool {
-	return s[0] == '-'
 }

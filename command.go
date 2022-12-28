@@ -355,7 +355,7 @@ func (c *Command) execute(ctx *Context) (*Command, error) {
 				if f.Type() != flags.BoolFlagType {
 					return c, fmt.Errorf("gommand: invalid multi-flag: -%s is not a boolean flag", string(chr))
 				}
-				f.Set("true")
+				_ = f.Set("true")
 			}
 		default:
 			if collectArgs {
@@ -487,8 +487,4 @@ func (c commands) String() string {
 		_, _ = fmt.Fprintf(&sb, "  %s%s  %s\n", k, strings.Repeat(" ", padding), c[k].Usage)
 	}
 	return sb.String()
-}
-
-func isFlag(s string) bool {
-	return s[0] == '-'
 }

@@ -17,11 +17,12 @@ var (
 			flags.BoolFlagS("insensitive", 'i', false, "case-insensitive"),
 			flags.StringSliceFlagS("strings", 's', []string{"test", "taco"}, "some strings"),
 		},
+		ArgValidator: gommand.ArgsAny(),
 		PersistentFlags: []flags.Flag{
 			flags.IntFlag("mult", 100, "something"),
 		},
 		Run: func(ctx *gommand.Context) error {
-			fmt.Println("root called")
+			fmt.Println("args", ctx.Args())
 			n := ctx.Flags().Int("num")
 			d, err := ctx.Flags().LookupBool("dry-run")
 			if err != nil {
@@ -38,40 +39,14 @@ var (
 			if err != nil {
 				return err
 			}
-			fmt.Println(n, d, i, s)
+			fmt.Println("num", n)
+			fmt.Println("dry run", d)
+			fmt.Println("insensitive", i)
+			fmt.Println("strings", s)
 			return nil
 		},
 	}
-	subCommands = []*gommand.Command{
-		{
-			Name: "sub1",
-			Flags: []flags.Flag{
-				flags.StringFlag("context", "", "some important context for you to understand"),
-			},
-			PersistentFlags: []flags.Flag{
-				flags.IntFlag("port", 12, "a port of some kind"),
-			},
-			Run: func(context *gommand.Context) error {
-				fmt.Println("sub1 called")
-				return nil
-			},
-		},
-		{
-			Name: "sub2",
-			Flags: []flags.Flag{
-				flags.BoolFlag("treat", false, "true if you get a treat, false if you get a trick"),
-			},
-			Run: func(context *gommand.Context) error {
-				fmt.Println("sub1 called")
-				return nil
-			},
-		},
-	}
 )
-
-func init() {
-	rootCmd.SubCommand(subCommands...)
-}
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {

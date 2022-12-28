@@ -1,7 +1,6 @@
 package flags
 
 import (
-	"fmt"
 	"os"
 	"strings"
 )
@@ -69,24 +68,24 @@ type Flag interface {
 	SetEnvPrefix(string)
 }
 
-func Stringer(flag Flag, nameLen int) string {
+func Stringer(flag Flag, nameLen int, hasShort bool) string {
 	var sb strings.Builder
-
-	_, _ = fmt.Fprint(&sb, "  ")
-	if flag.Short() > 0 {
-		_, _ = fmt.Fprint(&sb, "-", string(byte(flag.Short())), ", ")
-	} else {
-		_, _ = fmt.Fprint(&sb, "    ")
+	sb.WriteString("  ")
+	if hasShort {
+		if flag.Short() > 0 {
+			sb.WriteString("-")
+			sb.WriteRune(flag.Short())
+			sb.WriteString(", ")
+		} else {
+			sb.WriteString("    ")
+		}
 	}
 
-	_, _ = fmt.Fprint(
-		&sb,
-		"--",
-		flag.Name(),
-		strings.Repeat(" ", nameLen-len(flag.Name())),
-		"  ",
-		flag.Usage(),
-	)
+	sb.WriteString("--")
+	sb.WriteString(flag.Name())
+	sb.WriteString(strings.Repeat(" ", nameLen-len(flag.Name())))
+	sb.WriteString("  ")
+	sb.WriteString(flag.Usage())
 	return sb.String()
 }
 

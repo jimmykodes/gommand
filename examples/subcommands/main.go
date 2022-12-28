@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/jimmykodes/gommand"
+	"github.com/jimmykodes/gommand/flags"
 )
 
 var (
@@ -13,6 +14,11 @@ var (
 		Name:         "math",
 		Description:  "a collection of math commands",
 		SilenceError: true,
+		PersistentFlags: []flags.Flag{
+			flags.StringFlag("host", "", "host address"),
+			flags.IntFlag("port", 8080, "port number"),
+			flags.BoolFlagS("serve", 's', false, "serve something to the host and port"),
+		},
 	}
 	sumCmd = &gommand.Command{
 		Name:         "sum",

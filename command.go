@@ -145,21 +145,20 @@ type Command struct {
 }
 
 func (c *Command) ExecuteContext(ctx context.Context) error {
-	args := os.Args[1:]
-
-	cmd, err := c.execute(&Context{
+	cmdCtx := &Context{
 		Context: ctx,
-		args:    args,
-	})
+		args:    os.Args[1:],
+	}
+	err := c.execute(cmdCtx)
 	if errors.Is(err, errShowHelp) {
-		cmd.help()
+		cmdCtx.cmd.help()
 		return nil
 	}
 	if mErr := multierr.Append(err, multierr.Combine(c.errs...)); mErr != nil {
-		if !cmd.silenceHelp() {
-			cmd.help()
+		if !cmdCtx.silenceHelp {
+			cmdCtx.cmd.help()
 		}
-		if !cmd.silenceError() {
+		if !cmdCtx.silenceError {
 			fmt.Println("Error:", mErr)
 		}
 		return mErr
@@ -175,27 +174,6 @@ func (c *Command) SubCommand(cmds ...*Command) {
 	for _, command := range cmds {
 		c.subCommand(command)
 	}
-}
-
-// todo: should be able to set something coming down the command call stack, rather than
-// having to retrace it back up to see if anything in our lineage has this value set
-// do the same for silenceHelp
-func (c *Command) silenceError() bool {
-	for upstream := c; upstream != nil; upstream = upstream.parent {
-		if upstream.SilenceError {
-			return true
-		}
-	}
-	return false
-}
-
-func (c *Command) silenceHelp() bool {
-	for upstream := c; upstream != nil; upstream = upstream.parent {
-		if upstream.SilenceHelp {
-			return true
-		}
-	}
-	return false
 }
 
 func (c *Command) help() {
@@ -276,10 +254,12 @@ func (c *Command) hasSubCommands() bool {
 	return len(c.commands) > 0
 }
 
-func (c *Command) execute(ctx *Context) (*Command, error) {
+func (c *Command) execute(ctx *Context) error {
 	// ################
 	// Append any persistent configs
 	// ################
+	ctx.cmd = c
+	ctx.addPersistentFlags(c.PersistentFlagSet())
 
 	// append pre run functions to be executed in order
 	if c.PersistentPreRun != nil {
@@ -294,13 +274,21 @@ func (c *Command) execute(ctx *Context) (*Command, error) {
 		ctx.deferPost = true
 	}
 
+	if c.SilenceError {
+		ctx.silenceError = true
+	}
+
+	if c.SilenceHelp {
+		ctx.silenceHelp = true
+	}
+
 	// ################
 	// Walk the command tree
 	// ################
 
 	if c.hasSubCommands() {
 		if len(ctx.args) == 0 {
-			return c, fmt.Errorf("%s: %w", c.Name, ErrNoSubcommand)
+			return fmt.Errorf("%s: %w", c.Name, ErrNoSubcommand)
 		}
 		next := c.commands[ctx.args[0]]
 		if next != nil {
@@ -314,11 +302,7 @@ func (c *Command) execute(ctx *Context) (*Command, error) {
 	// ################
 
 	fs := flags.NewFlagSet()
-
-	for p := c; p != nil; p = p.parent {
-		fs.AddFlagSet(p.PersistentFlagSet())
-	}
-
+	fs.AddFlagSet(ctx.persistentFlags)
 	fs.AddFlagSet(c.FlagSet())
 
 	ctx.flagGetter = flags.NewFlagGetter(fs)
@@ -339,21 +323,21 @@ func (c *Command) execute(ctx *Context) (*Command, error) {
 			args = append(args, token.Value)
 		case lexer.MultiFlagType:
 			if collectArgs {
-				return c, fmt.Errorf("gommand: invalid flag position: flags must come before args: -%s", token.Name)
+				return fmt.Errorf("gommand: invalid flag position: flags must come before args: -%s", token.Name)
 			}
 			if token.Value != "" {
-				return c, fmt.Errorf("gommand: invalid multi-flag: cannot assign value to multi-flag: -%s", token.Name)
+				return fmt.Errorf("gommand: invalid multi-flag: cannot assign value to multi-flag: -%s", token.Name)
 			}
 			for _, chr := range token.Name {
 				if chr == 'h' {
-					return c, errShowHelp
+					return errShowHelp
 				}
 				f := fs.FromShort(chr)
 				if f == nil {
-					return c, fmt.Errorf("gommand: missing flag: -%s", string(chr))
+					return fmt.Errorf("gommand: missing flag: -%s", string(chr))
 				}
 				if f.Type() != flags.BoolFlagType {
-					return c, fmt.Errorf("gommand: invalid multi-flag: -%s is not a boolean flag", string(chr))
+					return fmt.Errorf("gommand: invalid multi-flag: -%s is not a boolean flag", string(chr))
 				}
 				_ = f.Set("true")
 			}
@@ -363,18 +347,18 @@ func (c *Command) execute(ctx *Context) (*Command, error) {
 				if token.Type == lexer.LongFlagType {
 					prefix += "-"
 				}
-				return c, fmt.Errorf("gommand: invalid flag position: flags must come before args: %s%s", prefix, token.Name)
+				return fmt.Errorf("gommand: invalid flag position: flags must come before args: %s%s", prefix, token.Name)
 			}
 			var f flags.Flag
 			switch token.Type {
 			case lexer.ShortFlagType:
 				if token.Name == "h" {
-					return c, errShowHelp
+					return errShowHelp
 				}
 				f = fs.FromShort(rune(token.Name[0]))
 			case lexer.LongFlagType:
 				if token.Name == "help" {
-					return c, errShowHelp
+					return errShowHelp
 				}
 				f = fs.FromName(token.Name)
 			}
@@ -384,7 +368,7 @@ func (c *Command) execute(ctx *Context) (*Command, error) {
 				if token.Type == lexer.LongFlagType {
 					prefix += "-"
 				}
-				return c, fmt.Errorf("gommand: missing flag: %s%s", prefix, token.Name)
+				return fmt.Errorf("gommand: missing flag: %s%s", prefix, token.Name)
 			}
 
 			var setErr error
@@ -400,7 +384,7 @@ func (c *Command) execute(ctx *Context) (*Command, error) {
 				setErr = f.Set(token.Value)
 			}
 			if setErr != nil {
-				return c, setErr
+				return setErr
 			}
 		}
 	}
@@ -416,7 +400,7 @@ func (c *Command) execute(ctx *Context) (*Command, error) {
 		validator = ArgsNone()
 	}
 	if !validator(ctx.args) {
-		return c, fmt.Errorf("gommand: invalid args")
+		return fmt.Errorf("gommand: invalid args")
 	}
 
 	// ################
@@ -425,12 +409,12 @@ func (c *Command) execute(ctx *Context) (*Command, error) {
 
 	for _, run := range ctx.preRuns {
 		if err := run(ctx); err != nil {
-			return c, err
+			return err
 		}
 	}
 	if c.PreRun != nil {
 		if err := c.PreRun(ctx); err != nil {
-			return c, err
+			return err
 		}
 	}
 
@@ -462,9 +446,9 @@ func (c *Command) execute(ctx *Context) (*Command, error) {
 		}
 	}()
 	if c.Run == nil {
-		return c, ErrNoRunner
+		return ErrNoRunner
 	}
-	return c, c.Run(ctx)
+	return c.Run(ctx)
 }
 
 type commands map[string]*Command

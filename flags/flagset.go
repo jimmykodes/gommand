@@ -47,18 +47,24 @@ func (fs *FlagSet) AddFlag(f Flag) {
 }
 
 func (fs *FlagSet) Repr() string {
-	names := make([]string, 0, len(fs.flags))
-	maxLen := 0
+	var (
+		names    = make([]string, 0, len(fs.flags))
+		maxLen   = 0
+		hasShort = false
+	)
 	for n, flag := range fs.flags {
 		names = append(names, n)
 		if l := len(flag.Name()); l > maxLen {
 			maxLen = l
 		}
+		if flag.Short() != 0 {
+			hasShort = true
+		}
 	}
 	sort.Strings(names)
 	strs := make([]string, len(names))
 	for i, name := range names {
-		strs[i] = Stringer(fs.flags[name], maxLen)
+		strs[i] = Stringer(fs.flags[name], maxLen, hasShort)
 	}
 	return strings.Join(strs, "\n")
 }
@@ -68,6 +74,9 @@ func (fs *FlagSet) addHelpFlag() {
 }
 
 func (fs *FlagSet) AddFlagSet(set *FlagSet) {
+	if set == nil {
+		return
+	}
 	for name, flag := range set.flags {
 		fs.flags[name] = flag
 	}

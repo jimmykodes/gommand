@@ -16,6 +16,7 @@ var (
 			flags.BoolFlagS("dry-run", 'd', false, "dry run"),
 			flags.BoolFlagS("insensitive", 'i', false, "case-insensitive"),
 			flags.StringSliceFlagS("strings", 's', []string{"test", "taco"}, "some strings"),
+			flags.StringFlag("required", "", "a required string").Required(),
 		},
 		ArgValidator: gommand.ArgsAny(),
 		PersistentFlags: []flags.Flag{
@@ -39,10 +40,15 @@ var (
 			if err != nil {
 				return err
 			}
+			required, err := ctx.Flags().LookupString("required")
+			if err != nil {
+				return err
+			}
 			fmt.Println("num", n)
 			fmt.Println("dry run", d)
 			fmt.Println("insensitive", i)
 			fmt.Println("strings", s)
+			fmt.Println("required", required)
 			return nil
 		},
 	}

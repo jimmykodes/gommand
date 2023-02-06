@@ -5,42 +5,6 @@ import (
 	"strings"
 )
 
-type FlagType int
-
-const (
-	UnknownFlagType FlagType = iota
-	StringFlagType
-	BoolFlagType
-	DurationFlagType
-	IntFlagType
-	Int8FlagType
-	Int16FlagType
-	Int32FlagType
-	Int64FlagType
-	UintFlagType
-	Uint8FlagType
-	Uint16FlagType
-	Uint32FlagType
-	Uint64FlagType
-	Float32FlagType
-	Float64FlagType
-	StringSliceFlagType
-	BoolSliceFlagType
-	DurationSliceFlagType
-	IntSliceFlagType
-	Int8SliceFlagType
-	Int16SliceFlagType
-	Int32SliceFlagType
-	Int64SliceFlagType
-	UintSliceFlagType
-	Uint8SliceFlagType
-	Uint16SliceFlagType
-	Uint32SliceFlagType
-	Uint64SliceFlagType
-	Float32SliceFlagType
-	Float64SliceFlagType
-)
-
 var (
 	sliceSeparator = getSliceSep()
 )
@@ -53,16 +17,18 @@ func getSliceSep() string {
 	return sep
 }
 
+//go:generate flagger
 type Flag interface {
 	Type() FlagType
 	Name() string
 	Short() rune
 	Usage() string
 	IsSet() bool
-	Required()
 	IsRequired() bool
 	EnvPrefix() string
 	Value() any
+
+	Required() Flag
 
 	Set(string) error
 	SetEnvPrefix(string)
@@ -105,5 +71,4 @@ func (f *baseFlag) Usage() string              { return f.usage }
 func (f *baseFlag) IsSet() bool                { return f.set }
 func (f *baseFlag) IsRequired() bool           { return f.req }
 func (f *baseFlag) EnvPrefix() string          { return f.envPrefix }
-func (f *baseFlag) Required()                  { f.req = true }
 func (f *baseFlag) SetEnvPrefix(prefix string) { f.envPrefix = prefix }

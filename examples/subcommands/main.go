@@ -12,7 +12,7 @@ import (
 var (
 	rootCmd = &gommand.Command{
 		Name:         "math",
-		Description:  "a collection of math commands",
+		Usage:        "a collection of math commands",
 		SilenceError: true,
 		PersistentFlags: []flags.Flag{
 			flags.StringFlag("host", "", "host address"),
@@ -21,9 +21,8 @@ var (
 		},
 	}
 	sumCmd = &gommand.Command{
-		Name:         "sum",
-		Usage:        "sum [...n]",
-		Description:  "sum all supplied numbers",
+		Name:         "sum n...",
+		Usage:        "sum all provided integers",
 		ArgValidator: gommand.ArgsMin(1),
 		SilenceHelp:  true,
 		Run: func(ctx *gommand.Context) error {
@@ -40,9 +39,8 @@ var (
 		},
 	}
 	multCmd = &gommand.Command{
-		Name:         "mult",
-		Usage:        "mult n1 n2",
-		Description:  "multiply the two provided integers",
+		Name:         "mult n1 n2",
+		Usage:        "multiply the two provided integers",
 		ArgValidator: gommand.ArgsExact(2),
 		Run: func(ctx *gommand.Context) error {
 			args := ctx.Args()

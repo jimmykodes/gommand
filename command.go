@@ -49,11 +49,20 @@ type Command struct {
 	// c2 would be called by running
 	// entrypoint my-sub-command
 	//
-	// if spaces are included in the name, anything after the first space is discarded
+	// Anything included after a space is expected to be usage descriptions
+	// General syntax guidance
+	//   ... indicates multiple of the preceding argument can be provided
+	//   [ ] indicates optional arguments
+	//   { } indicates a set of mutually exclusive required arguments
+	//   |   indicates mutually exclusive arguments, where only one value in the set
+	//       should be provided at a time. As described above, if the set of arguments
+	//       are optional, the set should be enclosed in [ ] otherwise they should be
+	//       enclosed in { }
+	//
+	// Example: create {--from-file file | --from-gcs bucket} [-d destination] file_name...
 	Name string
 
-	// Usage is the short usage explanation string
-	// todo: add more detail here
+	// Usage is the short explanation of the command
 	Usage string
 
 	// Description is the longer description of the command printed out by the help text
@@ -176,37 +185,44 @@ func (c *Command) SubCommand(cmds ...*Command) {
 	}
 }
 
+func (c *Command) name() (name string) {
+	name, _, _ = strings.Cut(c.Name, " ")
+	return
+}
+
 func (c *Command) help() {
 	if c.Description != "" {
 		fmt.Println(c.Description)
 		fmt.Println()
+	} else if c.Usage != "" {
+		fmt.Println(c.Usage)
+		fmt.Println()
 	}
 	fmt.Println("Usage:")
-	if c.Usage != "" {
-		fmt.Print("  ", c.Usage)
-	} else {
-		fmt.Print("  ", c.Name)
+	usage := []string{c.Name}
+	for parent := c.parent; parent != nil; parent = parent.parent {
+		usage = append([]string{parent.name()}, usage...)
 	}
+	fmt.Print("  ", strings.Join(usage, " "))
+
 	if len(c.commands) > 0 {
 		fmt.Print(" [commands]")
 	}
+	fmt.Println()
+	fmt.Println()
+
 	pfs := flags.NewFlagSet()
 	for p := c; p != nil; p = p.parent {
 		pfs.AddFlagSet(p.PersistentFlagSet())
 	}
 
-	fsStr := c.FlagSet().Repr()
-	pfsStr := pfs.Repr()
-	if fsStr != "" {
-		fmt.Print(" [flags]")
-	}
-	fmt.Println()
-	fmt.Println()
-
 	if len(c.commands) > 0 {
 		fmt.Println("Available Commands:")
 		fmt.Println(c.commands)
 	}
+
+	fsStr := c.FlagSet().Repr()
+	pfsStr := pfs.Repr()
 
 	fmt.Println("Flags:")
 	fmt.Println(fsStr)
@@ -246,7 +262,7 @@ func (c *Command) subCommand(cmd *Command) {
 	if c.commands == nil {
 		c.commands = make(map[string]*Command)
 	}
-	c.commands[cmd.Name] = cmd
+	c.commands[cmd.name()] = cmd
 	cmd.parent = c
 }
 

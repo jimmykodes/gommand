@@ -31,6 +31,11 @@ func (f *stringFlag) Required() Flag {
 	return f
 }
 
+func (f *stringFlag) AddSources(sources ...Valuer) Flag {
+	f.addSources(sources...)
+	return f
+}
+
 func StringFlag(name string, value string, usage string) Flag {
 	return &stringFlag{
 		baseFlag: &baseFlag{name: name, usage: usage},

@@ -39,6 +39,11 @@ func (f *durationFlag) Required() Flag {
 	return f
 }
 
+func (f *durationFlag) AddSources(sources ...Valuer) Flag {
+	f.addSources(sources...)
+	return f
+}
+
 func DurationFlag(name string, value time.Duration, usage string) Flag {
 	return &durationFlag{
 		baseFlag: &baseFlag{name: name, usage: usage},

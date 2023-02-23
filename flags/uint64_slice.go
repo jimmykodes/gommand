@@ -45,6 +45,11 @@ func (f *uint64SliceFlag) Required() Flag {
 	return f
 }
 
+func (f *uint64SliceFlag) AddSources(sources ...Valuer) Flag {
+	f.addSources(sources...)
+	return f
+}
+
 func Uint64SliceFlag(name string, value []uint64, usage string) Flag {
 	return &uint64SliceFlag{
 		baseFlag: &baseFlag{name: name, usage: usage},

@@ -39,6 +39,11 @@ func (f *float64Flag) Required() Flag {
 	return f
 }
 
+func (f *float64Flag) AddSources(sources ...Valuer) Flag {
+	f.addSources(sources...)
+	return f
+}
+
 func Float64Flag(name string, value float64, usage string) Flag {
 	return &float64Flag{
 		baseFlag: &baseFlag{name: name, usage: usage},

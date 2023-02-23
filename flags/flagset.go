@@ -2,11 +2,8 @@ package flags
 
 import (
 	"errors"
-	"os"
 	"sort"
 	"strings"
-
-	"github.com/jimmykodes/strman"
 )
 
 var (
@@ -24,10 +21,9 @@ func NewFlagSet(options ...FlagSetOption) *FlagSet {
 }
 
 type FlagSet struct {
-	envPrefix  string
-	noEnv      bool
 	flags      map[string]Flag
 	shortFlags map[rune]Flag
+	sources    []Valuer
 }
 
 func (fs *FlagSet) FromName(name string) Flag {
@@ -38,12 +34,25 @@ func (fs *FlagSet) FromShort(short rune) Flag {
 	return fs.shortFlags[short]
 }
 
-func (fs *FlagSet) AddFlag(f Flag) {
-	f.SetEnvPrefix(fs.envPrefix)
+func (fs *FlagSet) AddFlag(f Flag) *FlagSet {
 	fs.flags[f.Name()] = f
 	if f.Short() != 0 {
 		fs.shortFlags[f.Short()] = f
 	}
+	f.AddSources(fs.sources...)
+	return fs
+}
+
+func (fs *FlagSet) AddFlags(flags ...Flag) *FlagSet {
+	for _, f := range flags {
+		fs.AddFlag(f)
+	}
+	return fs
+}
+
+func (fs *FlagSet) AddSource(source Valuer) *FlagSet {
+	fs.sources = append(fs.sources, source)
+	return fs
 }
 
 func (fs *FlagSet) Repr() string {
@@ -73,9 +82,9 @@ func (fs *FlagSet) addHelpFlag() {
 	fs.BoolS("help", 'h', false, "show this help message")
 }
 
-func (fs *FlagSet) AddFlagSet(set *FlagSet) {
+func (fs *FlagSet) AddFlagSet(set *FlagSet) *FlagSet {
 	if set == nil {
-		return
+		return fs
 	}
 	for name, flag := range set.flags {
 		fs.flags[name] = flag
@@ -83,6 +92,7 @@ func (fs *FlagSet) AddFlagSet(set *FlagSet) {
 	for short, flag := range set.shortFlags {
 		fs.shortFlags[short] = flag
 	}
+	return fs
 }
 
 func (fs *FlagSet) MarkRequired(name string) error {
@@ -99,28 +109,26 @@ func (fs *FlagSet) flag(name string, t FlagType) (Flag, error) {
 	if !ok {
 		return nil, ErrUnregisteredFlag
 	}
+
 	if f.Type() != t {
 		return nil, ErrInvalidFlagType
 	}
-	if !f.IsSet() && !fs.noEnv {
-		// flag was not set from command line, and env lookup is not turned off
-		if val, ok := fromEnv(f.EnvPrefix(), name); ok {
-			if err := f.Set(val); err != nil {
-				return nil, err
+
+	if !f.IsSet() {
+		for _, source := range f.Sources() {
+			if val, ok := source.Value(name); ok {
+				if err := f.Set(val); err != nil {
+					return nil, err
+				}
+				break
 			}
 		}
 	}
+
 	if !f.IsSet() && f.IsRequired() {
 		// was not set by the command line _or_ the environment
 		return nil, ErrMissingRequiredFlag
 	}
-	return f, nil
-}
 
-func fromEnv(prefix, name string) (string, bool) {
-	p := prefix
-	if p != "" {
-		p = prefix + "_"
-	}
-	return os.LookupEnv(strman.ToScreamingSnake(p + name))
+	return f, nil
 }

@@ -74,10 +74,10 @@ type Command struct {
 	ArgValidator ArgValidator
 
 	// Flags are a slice of flags.Flag that will be used to initialize the command's FlagSet
-	Flags []flags.Flag
+	FlagSet *flags.FlagSet
 
 	// PersistentFlags are a slice of flags.Flag that will be used to initialize the command's PersistentFlagSet
-	PersistentFlags []flags.Flag
+	PersistentFlagSet *flags.FlagSet
 
 	// Run is the core function the command should execute
 	Run func(*Context) error
@@ -198,6 +198,7 @@ func (c *Command) help() {
 		fmt.Println(c.Usage)
 		fmt.Println()
 	}
+
 	fmt.Println("Usage:")
 	usage := []string{c.Name}
 	for parent := c.parent; parent != nil; parent = parent.parent {
@@ -211,9 +212,11 @@ func (c *Command) help() {
 	fmt.Println()
 	fmt.Println()
 
+	fs := flags.NewFlagSet(flags.WithHelpFlag()).AddFlagSet(c.FlagSet)
 	pfs := flags.NewFlagSet()
+
 	for p := c; p != nil; p = p.parent {
-		pfs.AddFlagSet(p.PersistentFlagSet())
+		pfs.AddFlagSet(p.PersistentFlagSet)
 	}
 
 	if len(c.commands) > 0 {
@@ -221,7 +224,7 @@ func (c *Command) help() {
 		fmt.Println(c.commands)
 	}
 
-	fsStr := c.FlagSet().Repr()
+	fsStr := fs.Repr()
 	pfsStr := pfs.Repr()
 
 	fmt.Println("Flags:")
@@ -232,28 +235,6 @@ func (c *Command) help() {
 		fmt.Println("Global Flags:")
 		fmt.Println(pfsStr)
 	}
-}
-
-func (c *Command) FlagSet() *flags.FlagSet {
-	if c.flags != nil {
-		return c.flags
-	}
-	c.flags = flags.NewFlagSet(flags.WithHelpFlag())
-	for _, flag := range c.Flags {
-		c.flags.AddFlag(flag)
-	}
-	return c.flags
-}
-
-func (c *Command) PersistentFlagSet() *flags.FlagSet {
-	if c.persistentFlags != nil {
-		return c.persistentFlags
-	}
-	c.persistentFlags = flags.NewFlagSet()
-	for _, flag := range c.PersistentFlags {
-		c.persistentFlags.AddFlag(flag)
-	}
-	return c.persistentFlags
 }
 
 func (c *Command) subCommand(cmd *Command) {
@@ -275,7 +256,7 @@ func (c *Command) execute(ctx *Context) error {
 	// Append any persistent configs
 	// ################
 	ctx.cmd = c
-	ctx.addPersistentFlags(c.PersistentFlagSet())
+	ctx.addPersistentFlags(c.PersistentFlagSet)
 
 	// append pre run functions to be executed in order
 	if c.PersistentPreRun != nil {
@@ -319,7 +300,7 @@ func (c *Command) execute(ctx *Context) error {
 
 	fs := flags.NewFlagSet()
 	fs.AddFlagSet(ctx.persistentFlags)
-	fs.AddFlagSet(c.FlagSet())
+	fs.AddFlagSet(c.FlagSet)
 
 	ctx.flagGetter = flags.NewFlagGetter(fs)
 

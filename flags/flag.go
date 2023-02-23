@@ -25,13 +25,14 @@ type Flag interface {
 	Usage() string
 	IsSet() bool
 	IsRequired() bool
-	EnvPrefix() string
 	Value() any
 
+	Sources() []Valuer
+
+	AddSources(sources ...Valuer) Flag
 	Required() Flag
 
 	Set(string) error
-	SetEnvPrefix(string)
 }
 
 func Stringer(flag Flag, nameLen int, hasShort bool) string {
@@ -62,13 +63,14 @@ type baseFlag struct {
 	set       bool
 	req       bool
 	envPrefix string
+	sources   []Valuer
 }
 
-func (f *baseFlag) Type() FlagType             { return UnknownFlagType }
-func (f *baseFlag) Name() string               { return f.name }
-func (f *baseFlag) Short() rune                { return f.short }
-func (f *baseFlag) Usage() string              { return f.usage }
-func (f *baseFlag) IsSet() bool                { return f.set }
-func (f *baseFlag) IsRequired() bool           { return f.req }
-func (f *baseFlag) EnvPrefix() string          { return f.envPrefix }
-func (f *baseFlag) SetEnvPrefix(prefix string) { f.envPrefix = prefix }
+func (f *baseFlag) Type() FlagType               { return UnknownFlagType }
+func (f *baseFlag) Name() string                 { return f.name }
+func (f *baseFlag) Short() rune                  { return f.short }
+func (f *baseFlag) Usage() string                { return f.usage }
+func (f *baseFlag) IsSet() bool                  { return f.set }
+func (f *baseFlag) IsRequired() bool             { return f.req }
+func (f *baseFlag) Sources() []Valuer            { return f.sources }
+func (f *baseFlag) addSources(sources ...Valuer) { f.sources = append(f.sources, sources...) }

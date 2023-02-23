@@ -39,6 +39,11 @@ func (f *float32Flag) Required() Flag {
 	return f
 }
 
+func (f *float32Flag) AddSources(sources ...Valuer) Flag {
+	f.addSources(sources...)
+	return f
+}
+
 func Float32Flag(name string, value float32, usage string) Flag {
 	return &float32Flag{
 		baseFlag: &baseFlag{name: name, usage: usage},

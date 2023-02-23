@@ -11,17 +11,17 @@ import (
 var (
 	rootCmd = &gommand.Command{
 		Name: "root",
-		Flags: []flags.Flag{
+		FlagSet: flags.NewFlagSet().AddFlags(
 			flags.IntFlag("num", 10, "a number"),
 			flags.BoolFlagS("dry-run", 'd', false, "dry run"),
 			flags.BoolFlagS("insensitive", 'i', false, "case-insensitive"),
 			flags.StringSliceFlagS("strings", 's', []string{"test", "taco"}, "some strings"),
 			flags.StringFlag("required", "", "a required string").Required(),
-		},
-		ArgValidator: gommand.ArgsAny(),
-		PersistentFlags: []flags.Flag{
+		),
+		PersistentFlagSet: flags.NewFlagSet().AddFlags(
 			flags.IntFlag("mult", 100, "something"),
-		},
+		),
+		ArgValidator: gommand.ArgsAny(),
 		Run: func(ctx *gommand.Context) error {
 			fmt.Println("args", ctx.Args())
 			n := ctx.Flags().Int("num")

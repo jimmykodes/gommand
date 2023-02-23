@@ -45,6 +45,11 @@ func (f *durationSliceFlag) Required() Flag {
 	return f
 }
 
+func (f *durationSliceFlag) AddSources(sources ...Valuer) Flag {
+	f.addSources(sources...)
+	return f
+}
+
 func DurationSliceFlag(name string, value []time.Duration, usage string) Flag {
 	return &durationSliceFlag{
 		baseFlag: &baseFlag{name: name, usage: usage},

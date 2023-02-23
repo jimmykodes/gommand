@@ -45,6 +45,11 @@ func (f *int8SliceFlag) Required() Flag {
 	return f
 }
 
+func (f *int8SliceFlag) AddSources(sources ...Valuer) Flag {
+	f.addSources(sources...)
+	return f
+}
+
 func Int8SliceFlag(name string, value []int8, usage string) Flag {
 	return &int8SliceFlag{
 		baseFlag: &baseFlag{name: name, usage: usage},

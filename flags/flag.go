@@ -5,9 +5,7 @@ import (
 	"strings"
 )
 
-var (
-	sliceSeparator = getSliceSep()
-)
+var sliceSeparator = getSliceSep()
 
 func getSliceSep() string {
 	sep := os.Getenv("GOMMAND_SLICE_SEPARATOR")
@@ -57,13 +55,12 @@ func Stringer(flag Flag, nameLen int, hasShort bool) string {
 }
 
 type baseFlag struct {
-	name      string
-	short     rune
-	usage     string
-	set       bool
-	req       bool
-	envPrefix string
-	sources   []Valuer
+	name    string
+	short   rune
+	usage   string
+	set     bool
+	req     bool
+	sources []Valuer
 }
 
 func (f *baseFlag) Type() FlagType               { return UnknownFlagType }

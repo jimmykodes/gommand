@@ -147,9 +147,6 @@ type Command struct {
 	parent   *Command
 	commands commands
 
-	flags           *flags.FlagSet
-	persistentFlags *flags.FlagSet
-
 	errs []error
 }
 

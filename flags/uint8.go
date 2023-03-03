@@ -39,6 +39,11 @@ func (f *uint8Flag) Required() Flag {
 	return f
 }
 
+func (f *uint8Flag) AddSources(sources ...Valuer) Flag {
+	f.addSources(sources...)
+	return f
+}
+
 func Uint8Flag(name string, value uint8, usage string) Flag {
 	return &uint8Flag{
 		baseFlag: &baseFlag{name: name, usage: usage},

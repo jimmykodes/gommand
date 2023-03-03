@@ -39,6 +39,11 @@ func (f *int8Flag) Required() Flag {
 	return f
 }
 
+func (f *int8Flag) AddSources(sources ...Valuer) Flag {
+	f.addSources(sources...)
+	return f
+}
+
 func Int8Flag(name string, value int8, usage string) Flag {
 	return &int8Flag{
 		baseFlag: &baseFlag{name: name, usage: usage},

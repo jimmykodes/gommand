@@ -14,11 +14,11 @@ var (
 		Name:         "math",
 		Usage:        "a collection of math commands",
 		SilenceError: true,
-		PersistentFlags: []flags.Flag{
+		PersistentFlagSet: flags.NewFlagSet().AddFlags(
 			flags.StringFlag("host", "", "host address"),
 			flags.IntFlag("port", 8080, "port number"),
 			flags.BoolFlagS("serve", 's', false, "serve something to the host and port"),
-		},
+		),
 	}
 	sumCmd = &gommand.Command{
 		Name:         "sum n...",

@@ -39,6 +39,11 @@ func (f *uint16Flag) Required() Flag {
 	return f
 }
 
+func (f *uint16Flag) AddSources(sources ...Valuer) Flag {
+	f.addSources(sources...)
+	return f
+}
+
 func Uint16Flag(name string, value uint16, usage string) Flag {
 	return &uint16Flag{
 		baseFlag: &baseFlag{name: name, usage: usage},

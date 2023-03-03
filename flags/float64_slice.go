@@ -45,6 +45,11 @@ func (f *float64SliceFlag) Required() Flag {
 	return f
 }
 
+func (f *float64SliceFlag) AddSources(sources ...Valuer) Flag {
+	f.addSources(sources...)
+	return f
+}
+
 func Float64SliceFlag(name string, value []float64, usage string) Flag {
 	return &float64SliceFlag{
 		baseFlag: &baseFlag{name: name, usage: usage},

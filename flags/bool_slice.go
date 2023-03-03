@@ -45,6 +45,11 @@ func (f *boolSliceFlag) Required() Flag {
 	return f
 }
 
+func (f *boolSliceFlag) AddSources(sources ...Valuer) Flag {
+	f.addSources(sources...)
+	return f
+}
+
 func BoolSliceFlag(name string, value []bool, usage string) Flag {
 	return &boolSliceFlag{
 		baseFlag: &baseFlag{name: name, usage: usage},

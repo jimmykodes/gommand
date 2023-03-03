@@ -45,6 +45,11 @@ func (f *int32SliceFlag) Required() Flag {
 	return f
 }
 
+func (f *int32SliceFlag) AddSources(sources ...Valuer) Flag {
+	f.addSources(sources...)
+	return f
+}
+
 func Int32SliceFlag(name string, value []int32, usage string) Flag {
 	return &int32SliceFlag{
 		baseFlag: &baseFlag{name: name, usage: usage},

@@ -36,6 +36,11 @@ func (f *stringSliceFlag) Required() Flag {
 	return f
 }
 
+func (f *stringSliceFlag) AddSources(sources ...Valuer) Flag {
+	f.addSources(sources...)
+	return f
+}
+
 func StringSliceFlag(name string, value []string, usage string) Flag {
 	return &stringSliceFlag{
 		baseFlag: &baseFlag{name: name, usage: usage},

@@ -39,6 +39,11 @@ func (f *int64Flag) Required() Flag {
 	return f
 }
 
+func (f *int64Flag) AddSources(sources ...Valuer) Flag {
+	f.addSources(sources...)
+	return f
+}
+
 func Int64Flag(name string, value int64, usage string) Flag {
 	return &int64Flag{
 		baseFlag: &baseFlag{name: name, usage: usage},

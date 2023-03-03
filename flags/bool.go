@@ -39,6 +39,11 @@ func (f *boolFlag) Required() Flag {
 	return f
 }
 
+func (f *boolFlag) AddSources(sources ...Valuer) Flag {
+	f.addSources(sources...)
+	return f
+}
+
 func BoolFlag(name string, value bool, usage string) Flag {
 	return &boolFlag{
 		baseFlag: &baseFlag{name: name, usage: usage},

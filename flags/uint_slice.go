@@ -45,6 +45,11 @@ func (f *uintSliceFlag) Required() Flag {
 	return f
 }
 
+func (f *uintSliceFlag) AddSources(sources ...Valuer) Flag {
+	f.addSources(sources...)
+	return f
+}
+
 func UintSliceFlag(name string, value []uint, usage string) Flag {
 	return &uintSliceFlag{
 		baseFlag: &baseFlag{name: name, usage: usage},

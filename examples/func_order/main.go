@@ -46,6 +46,25 @@ var (
 		},
 		PostRun: func(context *gommand.Context) error { fmt.Println("final post run"); return nil },
 	}
+	finalPanicCmd = &gommand.Command{
+		Name:   "final-panic",
+		PreRun: func(*gommand.Context) error { fmt.Println("final pre run"); return nil },
+		Run: func(*gommand.Context) error {
+			fmt.Println("final running")
+			panic("final-panic")
+		},
+		PostRun: func(context *gommand.Context) error { fmt.Println("final post run"); return nil },
+	}
+	finalPanicDeferredCmd = &gommand.Command{
+		Name:      "final-panic-deferred",
+		DeferPost: true,
+		PreRun:    func(*gommand.Context) error { fmt.Println("final pre run"); return nil },
+		Run: func(*gommand.Context) error {
+			fmt.Println("final running")
+			panic("final-panic")
+		},
+		PostRun: func(context *gommand.Context) error { fmt.Println("final post run"); return nil },
+	}
 )
 
 func init() {
@@ -53,6 +72,8 @@ func init() {
 	subCmd.SubCommand(finalCmd)
 	subCmd.SubCommand(finalErrCmd)
 	subCmd.SubCommand(finalErrDeferredCmd)
+	subCmd.SubCommand(finalPanicCmd)
+	subCmd.SubCommand(finalPanicDeferredCmd)
 }
 
 // `./func_order sub final` returns

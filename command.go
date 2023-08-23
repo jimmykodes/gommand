@@ -8,8 +8,6 @@ import (
 	"sort"
 	"strings"
 
-	"go.uber.org/multierr"
-
 	"github.com/jimmykodes/gommand/flags"
 	"github.com/jimmykodes/gommand/internal/lexer"
 )
@@ -136,7 +134,7 @@ type Command struct {
 	DeferPost bool
 
 	// SilenceHelp will not print the help message if the command exits with an error.
-	// This field will propogate to subcommands and cannot be overwritten by the child, so if any
+	// This field will propagate to subcommands and cannot be overwritten by the child, so if any
 	// point of a command's upstream lineage has the value set, the help message will be silenced
 	SilenceHelp bool
 
@@ -147,7 +145,7 @@ type Command struct {
 	parent   *Command
 	commands commands
 
-	errs []error
+	err error
 }
 
 func (c *Command) ExecuteContext(ctx context.Context) error {
@@ -160,7 +158,7 @@ func (c *Command) ExecuteContext(ctx context.Context) error {
 		cmdCtx.cmd.help()
 		return nil
 	}
-	if mErr := multierr.Append(err, multierr.Combine(c.errs...)); mErr != nil {
+	if mErr := errors.Join(err, c.err); mErr != nil {
 		if !cmdCtx.silenceHelp {
 			cmdCtx.cmd.help()
 		}
@@ -261,7 +259,7 @@ func (c *Command) execute(ctx *Context) error {
 	}
 	// prepend post run functions, to be executed in reverse order
 	if c.PersistentPostRun != nil {
-		ctx.postRuns = append([]func(*Context) error{c.PersistentPostRun}, ctx.postRuns...)
+		ctx.postRuns = append(ctx.postRuns, c.PersistentPostRun)
 	}
 
 	if c.DeferPost {
@@ -401,6 +399,11 @@ func (c *Command) execute(ctx *Context) error {
 	// Run the things!
 	// ################
 
+	// if there is no Run command, no need to do pre/post run setup things
+	if c.Run == nil {
+		return ErrNoRunner
+	}
+
 	for _, run := range ctx.preRuns {
 		if err := run(ctx); err != nil {
 			return err
@@ -413,36 +416,42 @@ func (c *Command) execute(ctx *Context) error {
 	}
 
 	var runErr error
+
 	defer func() {
-		// p := recover()
-		// if p != nil && !ctx.deferPost {
-		// 	// a panic happened, but DeferPost isn't set,
-		// 	panic(p)
-		// }
 		if runErr != nil && !ctx.deferPost {
 			return
 		}
 		if c.PostRun != nil {
 			if err := c.PostRun(ctx); err != nil {
-				c.errs = append(c.errs, err)
+				c.err = errors.Join(c.err, err)
 				if !ctx.deferPost {
 					return
 				}
 			}
 		}
-		for _, f := range ctx.postRuns {
-			if err := f(ctx); err != nil {
-				c.errs = append(c.errs, err)
+		for i := len(ctx.postRuns) - 1; i >= 0; i-- {
+			if err := ctx.postRuns[i](ctx); err != nil {
+				c.err = errors.Join(c.err, err)
 				if !ctx.deferPost {
 					return
 				}
 			}
 		}
 	}()
-	if c.Run == nil {
-		return ErrNoRunner
-	}
-	return c.Run(ctx)
+
+	defer func() {
+		if p := recover(); p != nil {
+			if !ctx.deferPost {
+				panic(p)
+			} else {
+				// TODO: figure out how to surface the panic as an error instead
+				runErr = errors.Join(runErr, fmt.Errorf("panic: %v", p))
+			}
+		}
+	}()
+
+	runErr = c.Run(ctx)
+	return runErr
 }
 
 type commands map[string]*Command

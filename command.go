@@ -398,7 +398,10 @@ func (c *Command) execute(ctx *Context) error {
 	// ################
 	// Run the things!
 	// ################
+	return c.run(ctx)
+}
 
+func (c *Command) run(ctx *Context) (runErr error) {
 	// if there is no Run command, no need to do pre/post run setup things
 	if c.Run == nil {
 		return ErrNoRunner
@@ -414,8 +417,6 @@ func (c *Command) execute(ctx *Context) error {
 			return err
 		}
 	}
-
-	var runErr error
 
 	defer func() {
 		if runErr != nil && !ctx.deferPost {
@@ -444,7 +445,6 @@ func (c *Command) execute(ctx *Context) error {
 			if !ctx.deferPost {
 				panic(p)
 			} else {
-				// TODO: figure out how to surface the panic as an error instead
 				runErr = errors.Join(runErr, fmt.Errorf("panic: %v", p))
 			}
 		}

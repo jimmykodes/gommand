@@ -13,6 +13,7 @@ var (
 	rootCmd = &gommand.Command{
 		Name:         "math",
 		Usage:        "a collection of math commands",
+		Version:      "1.0.0",
 		SilenceError: true,
 		PersistentFlagSet: flags.NewFlagSet().AddFlags(
 			flags.StringFlag("host", "", "host address"),

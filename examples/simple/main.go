@@ -12,6 +12,7 @@ var rootCmd = &gommand.Command{
 	Name:         "sum",
 	Usage:        "sum [...n]",
 	Description:  "sum all provided numbers",
+	Version:      "1.0.0",
 	ArgValidator: gommand.ArgsEvery(gommand.ArgsMin(1), ints),
 	Run: func(ctx *gommand.Context) error {
 		var total int

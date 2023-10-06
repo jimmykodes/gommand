@@ -16,6 +16,7 @@ var (
 	ErrNoRunner     = errors.New("gommand: command has no run function")
 	ErrNoSubcommand = errors.New("gommand: must specify a subcommand")
 	errShowHelp     = errors.New("show help")
+	errShowVersion  = errors.New("show version")
 )
 
 // Command represents a command line command
@@ -65,6 +66,15 @@ type Command struct {
 
 	// Description is the longer description of the command printed out by the help text
 	Description string
+
+	// Version is the value that will be printed when `--version` is passed to the command.
+	// When retrieving the command version, the call tree is traversed backwards until a Command
+	// is reached that has a non-zero value for the version. This means that it is possible
+	// to version individual branches of the call tree, though this is not recommended. It is
+	// intended to be set at the root of the tree, ideally through a package level var that can
+	// be set using ldflags at build time
+	// ie: go build -ldflags="cmd.Version=1.1.0"
+	Version string
 
 	// ArgValidator is an ArgValidator to be called on the args of the function being executed. This is called before any of
 	// the functions for this command are called.
@@ -158,6 +168,15 @@ func (c *Command) ExecuteContext(ctx context.Context) error {
 		cmdCtx.cmd.help()
 		return nil
 	}
+	if errors.Is(err, errShowVersion) {
+		v := c._version()
+		if v == "" {
+			v = "N/A"
+		}
+		fmt.Println(v)
+		return nil
+	}
+
 	if mErr := errors.Join(err, c.err); mErr != nil {
 		if !cmdCtx.silenceHelp {
 			cmdCtx.cmd.help()
@@ -185,12 +204,28 @@ func (c *Command) name() (name string) {
 	return
 }
 
+func (c *Command) _version() string {
+	_c := c
+	for _c.Version == "" {
+		if _c.parent == nil {
+			break
+		}
+		_c = _c.parent
+	}
+	return _c.Version
+}
+
 func (c *Command) help() {
 	if c.Description != "" {
 		fmt.Println(c.Description)
 		fmt.Println()
 	} else if c.Usage != "" {
 		fmt.Println(c.Usage)
+		fmt.Println()
+	}
+
+	if v := c._version(); v != "" {
+		fmt.Println("Version:", v)
 		fmt.Println()
 	}
 
@@ -351,6 +386,9 @@ func (c *Command) execute(ctx *Context) error {
 			case lexer.LongFlagType:
 				if token.Name == "help" {
 					return errShowHelp
+				}
+				if token.Name == "version" {
+					return errShowVersion
 				}
 				f = fs.FromName(token.Name)
 			}

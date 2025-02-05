@@ -12,21 +12,21 @@ func ArgsNone() ArgValidator {
 	return ArgsExact(0)
 }
 
-func ArgsMin(min int) ArgValidator {
+func ArgsMin(bound int) ArgValidator {
 	return func(s []string) bool {
-		return len(s) >= min
+		return len(s) >= bound
 	}
 }
 
-func ArgsMax(max int) ArgValidator {
+func ArgsMax(bound int) ArgValidator {
 	return func(s []string) bool {
-		return len(s) >= max
+		return len(s) <= bound
 	}
 }
 
-func ArgsBetween(min, max int) ArgValidator {
+func ArgsBetween(lower, upper int) ArgValidator {
 	return func(s []string) bool {
-		return min <= len(s) && len(s) <= max
+		return lower <= len(s) && len(s) <= upper
 	}
 }
 

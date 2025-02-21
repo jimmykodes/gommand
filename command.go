@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 
@@ -66,6 +67,20 @@ type Command struct {
 
 	// Description is the longer description of the command printed out by the help text
 	Description string
+
+	// Aliases are aliases for the current command.
+	//
+	// Ex:
+	// c1 := &Command{Name: "items"}
+	// c2 := &Command{Name: "list", Aliases: []string{"ls", "l"}}
+	// c1.SubCommand(c2)
+	//
+	// items list
+	// items ls
+	// items l
+	//
+	// All are valid ways of executing the `list` command
+	Aliases []string
 
 	// Version is the value that will be printed when `--version` is passed to the command.
 	// When retrieving the command version, the call tree is traversed backwards until a Command
@@ -242,6 +257,11 @@ func (c *Command) help() {
 	fmt.Println()
 	fmt.Println()
 
+	if len(c.Aliases) > 0 {
+		fmt.Println("Aliases:")
+		fmt.Printf("  %s\n\n", strings.Join(c.Aliases, ", "))
+	}
+
 	fs := flags.NewFlagSet(flags.WithHelpFlag()).AddFlagSet(c.FlagSet)
 	pfs := flags.NewFlagSet()
 
@@ -274,6 +294,9 @@ func (c *Command) subCommand(cmd *Command) {
 		c.commands = make(map[string]*Command)
 	}
 	c.commands[cmd.name()] = cmd
+	for _, alias := range cmd.Aliases {
+		c.commands[alias] = cmd
+	}
 	cmd.parent = c
 }
 
@@ -500,9 +523,12 @@ func (c commands) String() string {
 		maxKey int
 		keys   = make([]string, 0, len(c))
 	)
-	for k := range c {
-		keys = append(keys, k)
-		if l := len(k); l > maxKey {
+	for name, command := range c {
+		if slices.Contains(command.Aliases, name) {
+			continue
+		}
+		keys = append(keys, name)
+		if l := len(name); l > maxKey {
 			maxKey = l
 		}
 	}

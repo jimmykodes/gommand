@@ -24,6 +24,7 @@ var (
 	sumCmd = &gommand.Command{
 		Name:         "sum n...",
 		Usage:        "sum all provided integers",
+		Aliases:      []string{"add", "a"},
 		ArgValidator: gommand.ArgsMin(1),
 		SilenceHelp:  true,
 		Run: func(ctx *gommand.Context) error {
@@ -40,8 +41,9 @@ var (
 		},
 	}
 	multCmd = &gommand.Command{
-		Name:         "mult n1 n2",
+		Name:         "multiply n1 n2",
 		Usage:        "multiply the two provided integers",
+		Aliases:      []string{"mult", "m"},
 		ArgValidator: gommand.ArgsExact(2),
 		Run: func(ctx *gommand.Context) error {
 			args := ctx.Args()

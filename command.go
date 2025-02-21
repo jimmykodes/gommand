@@ -429,8 +429,8 @@ func (c *Command) execute(ctx *Context) error {
 		// default to allowing no args unless specified otherwise.
 		validator = ArgsNone()
 	}
-	if !validator(ctx.args) {
-		return fmt.Errorf("gommand: invalid args")
+	if err := validator(ctx.args); err != nil {
+		return fmt.Errorf("gommand: invalid args: %w", err)
 	}
 
 	// ################

@@ -9,9 +9,8 @@ import (
 )
 
 var rootCmd = &gommand.Command{
-	Name:         "sum",
-	Usage:        "sum [...n]",
-	Description:  "sum all provided numbers",
+	Name:         "sum  [...n]",
+	Usage:        "sum all provided numbers",
 	Version:      "1.0.0",
 	ArgValidator: gommand.ArgsEvery(gommand.ArgsMin(1), ints),
 	Run: func(ctx *gommand.Context) error {
@@ -28,13 +27,13 @@ var rootCmd = &gommand.Command{
 	},
 }
 
-func ints(s []string) bool {
+func ints(s []string) error {
 	for _, arg := range s {
 		if _, err := strconv.Atoi(arg); err != nil {
-			return false
+			return fmt.Errorf("%s is not an integer", arg)
 		}
 	}
-	return true
+	return nil
 }
 
 func main() {

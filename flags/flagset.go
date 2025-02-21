@@ -2,6 +2,7 @@ package flags
 
 import (
 	"errors"
+	"maps"
 	"sort"
 	"strings"
 )
@@ -86,12 +87,10 @@ func (fs *FlagSet) AddFlagSet(set *FlagSet) *FlagSet {
 	if set == nil {
 		return fs
 	}
-	for name, flag := range set.flags {
-		fs.flags[name] = flag
-	}
-	for short, flag := range set.shortFlags {
-		fs.shortFlags[short] = flag
-	}
+
+	maps.Copy(fs.flags, set.flags)
+	maps.Copy(fs.shortFlags, set.shortFlags)
+
 	return fs
 }
 

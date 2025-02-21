@@ -51,6 +51,10 @@ func Stringer(flag Flag, nameLen int, hasShort bool) string {
 	sb.WriteString(strings.Repeat(" ", nameLen-len(flag.Name())))
 	sb.WriteString("  ")
 	sb.WriteString(flag.Usage())
+	if flag.IsRequired() {
+		sb.WriteString(" ")
+		sb.WriteString("(required)")
+	}
 	return sb.String()
 }
 

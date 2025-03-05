@@ -11,11 +11,11 @@ import (
 var rootCmd = &gommand.Command{
 	Name: "root",
 	FlagSet: flags.NewFlagSet().AddFlags(
-		flags.IntFlag("num", 10, "a number"),
+		flags.IntFlag("num", 10, "a number").Required(),
 		flags.BoolFlagS("dry-run", 'd', false, "dry run"),
 		flags.BoolFlagS("insensitive", 'i', false, "case-insensitive"),
 		flags.StringSliceFlagS("strings", 's', []string{"test", "taco"}, "some strings"),
-		flags.StringFlag("required", "", "a required string").Required(),
+		flags.StringFlag("required", "", "a required string").AddSources(flags.Environ).Required(),
 	),
 	PersistentFlagSet: flags.NewFlagSet().AddFlags(
 		flags.IntFlag("mult", 100, "something"),

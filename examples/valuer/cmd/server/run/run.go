@@ -16,7 +16,7 @@ func Cmd(config *conf.Config) *gommand.Command {
 		FlagSet: flags.NewFlagSet().
 			AddSource(flags.ValuerFunc(config.SubPath("server"))).
 			AddFlags(
-				flags.StringFlag("addr", ":8080", "server address"),
+				flags.StringFlag("addr", "", "server address").Required(),
 			),
 		Run: func(ctx *gommand.Context) error {
 			mux := http.NewServeMux()

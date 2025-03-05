@@ -312,10 +312,12 @@ func (c *Command) execute(ctx *Context) error {
 	ctx.addPersistentFlags(c.PersistentFlagSet)
 
 	// append pre run functions to be executed in order
+	ctx.preRuns = append(ctx.preRuns, func(ctx *Context) error { return nil })
 	if c.PersistentPreRun != nil {
-		ctx.preRuns = append(ctx.preRuns, c.PersistentPreRun)
+		ctx.preRuns[ctx.depth] = c.PersistentPreRun
 	}
-	// prepend post run functions, to be executed in reverse order
+
+	// append post run functions, to be defered in order
 	if c.PersistentPostRun != nil {
 		ctx.postRuns = append(ctx.postRuns, c.PersistentPostRun)
 	}
@@ -342,6 +344,7 @@ func (c *Command) execute(ctx *Context) error {
 		}
 		next := c.commands[ctx.args[0]]
 		if next != nil {
+			ctx.depth++
 			ctx.args = ctx.args[1:]
 			return next.execute(ctx)
 		}
@@ -352,7 +355,7 @@ func (c *Command) execute(ctx *Context) error {
 	// ################
 
 	fs := flags.NewFlagSet()
-	fs.AddFlagSet(ctx.persistentFlags)
+	fs.AddFlagSet(ctx.persistentFlags())
 	fs.AddFlagSet(c.FlagSet)
 
 	ctx.flagGetter = flags.NewFlagGetter(fs)
@@ -441,11 +444,11 @@ func (c *Command) execute(ctx *Context) error {
 			}
 		}
 	}
-	ctx.args = args
-
 	// ################
 	// Validate args
 	// ################
+
+	ctx.args = args
 
 	validator := c.ArgValidator
 	if validator == nil {
@@ -468,11 +471,41 @@ func (c *Command) run(ctx *Context) (runErr error) {
 		return ErrNoRunner
 	}
 
-	for _, run := range ctx.preRuns {
+	for depth, run := range ctx.preRuns {
+		fs := ctx.persistentFlagSets[depth]
+		if fs == nil {
+			continue
+		}
+		fg := flags.NewFlagGetter(fs)
+		for _, f := range fg.All() {
+			if f.IsRequired() && !f.IsSet() {
+				if err := flags.SetFromSources(f); err != nil {
+					return err
+				}
+				if !f.IsSet() {
+					return flags.ErrMissingRequiredFlag{Flag: f}
+				}
+			}
+		}
 		if err := run(ctx); err != nil {
 			return err
 		}
 	}
+
+	if c.FlagSet != nil {
+		fg := flags.NewFlagGetter(c.FlagSet)
+		for _, f := range fg.All() {
+			if f.IsRequired() && !f.IsSet() {
+				if err := flags.SetFromSources(f); err != nil {
+					return err
+				}
+				if !f.IsSet() {
+					return flags.ErrMissingRequiredFlag{Flag: f}
+				}
+			}
+		}
+	}
+
 	if c.PreRun != nil {
 		if err := c.PreRun(ctx); err != nil {
 			return err

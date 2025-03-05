@@ -133,18 +133,13 @@ func (fs *FlagSet) flag(name string, t FlagType) (Flag, error) {
 	}
 
 	if !f.IsSet() {
-		for _, source := range f.Sources() {
-			if val, ok := source.Value(name); ok {
-				if err := f.Set(val); err != nil {
-					return nil, err
-				}
-				break
-			}
+		if err := SetFromSources(f); err != nil {
+			return nil, err
 		}
 	}
 
 	if !f.IsSet() && f.IsRequired() {
-		// was not set by the command line _or_ the environment
+		// was not set by the command line or any configured source
 		return nil, ErrMissingRequiredFlag{Flag: f}
 	}
 

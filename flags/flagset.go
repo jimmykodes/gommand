@@ -1,17 +1,36 @@
 package flags
 
 import (
-	"errors"
+	"fmt"
 	"maps"
 	"sort"
 	"strings"
 )
 
-var (
-	ErrUnregisteredFlag    = errors.New("gommand: flag not defined")
-	ErrInvalidFlagType     = errors.New("gommand: invalid flag type")
-	ErrMissingRequiredFlag = errors.New("gommand: missing required flag")
-)
+type ErrInvalidFlagType struct {
+	Flag         Flag
+	ExpectedType FlagType
+}
+
+func (e ErrInvalidFlagType) Error() string {
+	return fmt.Sprintf("gommand: flag --%s is not of type %s", e.Flag.Name(), e.ExpectedType)
+}
+
+type ErrUnregisteredFlag struct {
+	Name string
+}
+
+func (e ErrUnregisteredFlag) Error() string {
+	return fmt.Sprintf("gommand: flag --%s not defined", e.Name)
+}
+
+type ErrMissingRequiredFlag struct {
+	Flag Flag
+}
+
+func (e ErrMissingRequiredFlag) Error() string {
+	return fmt.Sprintf("gommand: missing required flag: --%s", e.Flag.Name())
+}
 
 func NewFlagSet(options ...FlagSetOption) *FlagSet {
 	f := &FlagSet{flags: make(map[string]Flag), shortFlags: make(map[rune]Flag)}
@@ -97,7 +116,7 @@ func (fs *FlagSet) AddFlagSet(set *FlagSet) *FlagSet {
 func (fs *FlagSet) MarkRequired(name string) error {
 	f, ok := fs.flags[name]
 	if !ok {
-		return ErrUnregisteredFlag
+		return ErrUnregisteredFlag{Name: name}
 	}
 	f.Required()
 	return nil
@@ -106,11 +125,11 @@ func (fs *FlagSet) MarkRequired(name string) error {
 func (fs *FlagSet) flag(name string, t FlagType) (Flag, error) {
 	f, ok := fs.flags[name]
 	if !ok {
-		return nil, ErrUnregisteredFlag
+		return nil, ErrUnregisteredFlag{Name: name}
 	}
 
 	if f.Type() != t {
-		return nil, ErrInvalidFlagType
+		return nil, ErrInvalidFlagType{Flag: f, ExpectedType: t}
 	}
 
 	if !f.IsSet() {
@@ -126,7 +145,7 @@ func (fs *FlagSet) flag(name string, t FlagType) (Flag, error) {
 
 	if !f.IsSet() && f.IsRequired() {
 		// was not set by the command line _or_ the environment
-		return nil, ErrMissingRequiredFlag
+		return nil, ErrMissingRequiredFlag{Flag: f}
 	}
 
 	return f, nil

@@ -15,18 +15,23 @@ type Context struct {
 	deferPost    bool
 	silenceHelp  bool
 	silenceError bool
+	depth        int
 
-	persistentFlags *flags.FlagSet
+	persistentFlagSets []*flags.FlagSet
 
 	flagGetter *flags.FlagGetter
 }
 
 func (c *Context) addPersistentFlags(fs *flags.FlagSet) {
-	if c.persistentFlags == nil {
-		c.persistentFlags = fs
-	} else {
-		c.persistentFlags.AddFlagSet(fs)
+	c.persistentFlagSets = append(c.persistentFlagSets, fs)
+}
+
+func (c *Context) persistentFlags() *flags.FlagSet {
+	fs := flags.NewFlagSet()
+	for _, pfs := range c.persistentFlagSets {
+		fs.AddFlagSet(pfs)
 	}
+	return fs
 }
 
 func (c *Context) Args() []string {

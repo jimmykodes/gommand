@@ -58,6 +58,18 @@ func Stringer(flag Flag, nameLen int, hasShort bool) string {
 	return sb.String()
 }
 
+func SetFromSources(f Flag) error {
+	for _, source := range f.Sources() {
+		if val, ok := source.Value(f.Name()); ok {
+			if err := f.Set(val); err != nil {
+				return err
+			}
+			break
+		}
+	}
+	return nil
+}
+
 type baseFlag struct {
 	name    string
 	short   rune

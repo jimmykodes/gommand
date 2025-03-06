@@ -38,6 +38,15 @@ func (c *Context) Args() []string {
 	return c.args
 }
 
+// Arg will return the command line argument at the given index
+// Returns an empty string if idx is out of range
+func (c *Context) Arg(idx int) string {
+	if idx < len(c.args) {
+		return c.args[idx]
+	}
+	return ""
+}
+
 func (c *Context) Flags() *flags.FlagGetter {
 	return c.flagGetter
 }

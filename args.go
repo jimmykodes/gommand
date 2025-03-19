@@ -1,76 +1,113 @@
 package gommand
 
-import "fmt"
+import (
+	"iter"
+	"strconv"
+)
 
-type ArgValidator func(s []string) error
+type Args []string
 
-func ArgsExact(n int) ArgValidator {
-	return func(s []string) error {
-		if len(s) != n {
-			return fmt.Errorf("expected exactly %d arguments, got %d", n, len(s))
-		}
-		return nil
+func (a Args) String(idx int) string {
+	if idx >= len(a) {
+		return ""
 	}
+	return a[idx]
 }
 
-func ArgsNone() ArgValidator {
-	return ArgsExact(0)
-}
-
-func ArgsMin(bound int) ArgValidator {
-	return func(s []string) error {
-		if len(s) < bound {
-			return fmt.Errorf("expected at least %d arguments, got %d", bound, len(s))
-		}
-		return nil
+func (a Args) Bool(idx int) (bool, error) {
+	s := a.String(idx)
+	if s == "" {
+		return false, nil
 	}
+	return strconv.ParseBool(s)
 }
 
-func ArgsMax(bound int) ArgValidator {
-	return func(s []string) error {
-		if len(s) > bound {
-			return fmt.Errorf("expected at most %d arguments, got %d", bound, len(s))
-		}
-		return nil
+func (a Args) Int64(idx int) (int64, error) {
+	s := a.String(idx)
+	if s == "" {
+		return 0, nil
 	}
+	return strconv.ParseInt(s, 10, 64)
 }
 
-func ArgsBetween(lower, upper int) ArgValidator {
-	return func(s []string) error {
-		if len(s) < lower || len(s) > upper {
-			return fmt.Errorf("expected between %d and %d arguments, got %d", lower, upper, len(s))
-		}
-		return nil
+func (a Args) Int(idx int) (int, error) {
+	i, err := a.Int64(idx)
+	return int(i), err
+}
+
+func (a Args) Float64(idx int) (float64, error) {
+	s := a.String(idx)
+	if s == "" {
+		return 0, nil
 	}
+	return strconv.ParseFloat(s, 64)
 }
 
-func ArgsEvery(validators ...ArgValidator) ArgValidator {
-	return func(s []string) error {
-		for _, v := range validators {
-			if err := v(s); err != nil {
-				return err
+func (a Args) Float32(idx int) (float32, error) {
+	s := a.String(idx)
+	if s == "" {
+		return 0, nil
+	}
+	f, err := strconv.ParseFloat(s, 32)
+	return float32(f), err
+}
+
+func (a Args) Strings() iter.Seq2[string, error] {
+	return func(yield func(string, error) bool) {
+		for _, s := range a {
+			if !yield(s, nil) {
+				return
 			}
 		}
-		return nil
 	}
 }
 
-func ArgsSome(validators ...ArgValidator) ArgValidator {
-	return func(s []string) error {
-		var errs []error
-		for _, v := range validators {
-			if err := v(s); err == nil {
-				return nil
-			} else {
-				errs = append(errs, err)
+func (a Args) Bools() iter.Seq2[bool, error] {
+	return func(yield func(bool, error) bool) {
+		for idx := range a {
+			if !yield(a.Bool(idx)) {
+				return
 			}
 		}
-		return fmt.Errorf("no validators passed: %v", errs)
 	}
 }
 
-func ArgsAny() ArgValidator {
-	return func([]string) error {
-		return nil
+func (a Args) Ints() iter.Seq2[int, error] {
+	return func(yield func(int, error) bool) {
+		for idx := range a {
+			if !yield(a.Int(idx)) {
+				return
+			}
+		}
+	}
+}
+
+func (a Args) Int64s() iter.Seq2[int64, error] {
+	return func(yield func(int64, error) bool) {
+		for idx := range a {
+			if !yield(a.Int64(idx)) {
+				return
+			}
+		}
+	}
+}
+
+func (a Args) Float64s() iter.Seq2[float64, error] {
+	return func(yield func(float64, error) bool) {
+		for idx := range a {
+			if !yield(a.Float64(idx)) {
+				return
+			}
+		}
+	}
+}
+
+func (a Args) Float32s() iter.Seq2[float32, error] {
+	return func(yield func(float32, error) bool) {
+		for idx := range a {
+			if !yield(a.Float32(idx)) {
+				return
+			}
+		}
 	}
 }

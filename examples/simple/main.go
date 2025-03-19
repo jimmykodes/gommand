@@ -15,8 +15,7 @@ var rootCmd = &gommand.Command{
 	ArgValidator: gommand.ArgsEvery(gommand.ArgsMin(1), ints),
 	Run: func(ctx *gommand.Context) error {
 		var total int
-		for _, s := range ctx.Args() {
-			i, err := strconv.Atoi(s)
+		for i, err := range ctx.Args().Ints() {
 			if err != nil {
 				return err
 			}

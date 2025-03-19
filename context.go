@@ -34,17 +34,14 @@ func (c *Context) persistentFlags() *flags.FlagSet {
 	return fs
 }
 
-func (c *Context) Args() []string {
+func (c *Context) Args() Args {
 	return c.args
 }
 
 // Arg will return the command line argument at the given index
 // Returns an empty string if idx is out of range
 func (c *Context) Arg(idx int) string {
-	if idx < len(c.args) {
-		return c.args[idx]
-	}
-	return ""
+	return Args(c.args).String(idx)
 }
 
 func (c *Context) Flags() *flags.FlagGetter {

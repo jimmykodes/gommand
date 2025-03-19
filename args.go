@@ -52,16 +52,6 @@ func (a Args) Float32(idx int) (float32, error) {
 	return float32(f), err
 }
 
-func (a Args) Strings() iter.Seq2[string, error] {
-	return func(yield func(string, error) bool) {
-		for _, s := range a {
-			if !yield(s, nil) {
-				return
-			}
-		}
-	}
-}
-
 func (a Args) Bools() iter.Seq2[bool, error] {
 	return func(yield func(bool, error) bool) {
 		for idx := range a {

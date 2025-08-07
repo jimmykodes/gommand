@@ -473,17 +473,16 @@ func (c *Command) run(ctx *Context) (runErr error) {
 
 	for depth, run := range ctx.preRuns {
 		fs := ctx.persistentFlagSets[depth]
-		if fs == nil {
-			continue
-		}
-		fg := flags.NewFlagGetter(fs)
-		for _, f := range fg.All() {
-			if f.IsRequired() && !f.IsSet() {
-				if err := flags.SetFromSources(f); err != nil {
-					return err
-				}
-				if !f.IsSet() {
-					return flags.ErrMissingRequiredFlag{Flag: f}
+		if fs != nil {
+			fg := flags.NewFlagGetter(fs)
+			for _, f := range fg.All() {
+				if f.IsRequired() && !f.IsSet() {
+					if err := flags.SetFromSources(f); err != nil {
+						return err
+					}
+					if !f.IsSet() {
+						return flags.ErrMissingRequiredFlag{Flag: f}
+					}
 				}
 			}
 		}

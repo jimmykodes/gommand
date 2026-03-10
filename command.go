@@ -503,6 +503,8 @@ func (c *Command) run(ctx *Context) (runErr error) {
 		if runErr != nil && !ctx.deferPost {
 			return
 		}
+
+		// defer c.PostRun
 		if c.PostRun != nil {
 			if err := c.PostRun(ctx); err != nil {
 				c.err = errors.Join(c.err, err)
@@ -511,6 +513,8 @@ func (c *Command) run(ctx *Context) (runErr error) {
 				}
 			}
 		}
+
+		// defer PersistentPostRuns
 		for i := len(ctx.postRuns) - 1; i >= 0; i-- {
 			if err := ctx.postRuns[i](ctx); err != nil {
 				c.err = errors.Join(c.err, err)
@@ -523,10 +527,9 @@ func (c *Command) run(ctx *Context) (runErr error) {
 
 	defer func() {
 		if p := recover(); p != nil {
+			runErr = errors.Join(runErr, fmt.Errorf("panic: %v", p))
 			if !ctx.deferPost {
 				panic(p)
-			} else {
-				runErr = errors.Join(runErr, fmt.Errorf("panic: %v", p))
 			}
 		}
 	}()

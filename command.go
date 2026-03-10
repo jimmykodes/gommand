@@ -170,7 +170,7 @@ type Command struct {
 	commands commands
 }
 
-func (c *Command) ExecuteContext(ctx context.Context, opts ...ExecutionOptionFunc) error {
+func (c *Command) ExecuteContext(ctx context.Context, opts ...ExecutionOption) error {
 	cmdCtx := &Context{
 		Context: ctx,
 		lexer:   lexer.New(os.Args[1:]),
@@ -205,7 +205,7 @@ func (c *Command) ExecuteContext(ctx context.Context, opts ...ExecutionOptionFun
 	return nil
 }
 
-func (c *Command) Execute(opts ...ExecutionOptionFunc) error {
+func (c *Command) Execute(opts ...ExecutionOption) error {
 	return c.ExecuteContext(context.Background(), opts...)
 }
 

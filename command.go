@@ -14,10 +14,9 @@ import (
 )
 
 var (
-	ErrNoRunner     = errors.New("gommand: command has no run function")
-	ErrNoSubcommand = errors.New("gommand: must specify a subcommand")
-	errShowHelp     = errors.New("show help")
-	errShowVersion  = errors.New("show version")
+	ErrNoRunner    = errors.New("gommand: command has no run function")
+	errShowHelp    = errors.New("show help")
+	errShowVersion = errors.New("show version")
 )
 
 // Command represents a command line command
@@ -169,18 +168,20 @@ type Command struct {
 
 	parent   *Command
 	commands commands
-
-	err error
 }
 
-func (c *Command) ExecuteContext(ctx context.Context) error {
+func (c *Command) ExecuteContext(ctx context.Context, opts ...ExecutionOption) error {
 	cmdCtx := &Context{
 		Context: ctx,
-		args:    os.Args[1:],
+		lexer:   lexer.New(os.Args[1:]),
 	}
+	for _, opt := range opts {
+		opt.Apply(cmdCtx)
+	}
+
 	err := c.execute(cmdCtx)
 	if errors.Is(err, errShowHelp) {
-		cmdCtx.cmd.help()
+		_, _ = fmt.Fprint(cmdCtx.Stdout(), cmdCtx.cmd.helpText())
 		return nil
 	}
 	if errors.Is(err, errShowVersion) {
@@ -188,24 +189,24 @@ func (c *Command) ExecuteContext(ctx context.Context) error {
 		if v == "" {
 			v = "N/A"
 		}
-		fmt.Println(v)
+		_, _ = fmt.Fprintln(cmdCtx.Stdout(), v)
 		return nil
 	}
 
-	if mErr := errors.Join(err, c.err); mErr != nil {
+	if mErr := errors.Join(err, cmdCtx.err); mErr != nil {
 		if !cmdCtx.silenceHelp {
-			cmdCtx.cmd.help()
+			_, _ = fmt.Fprint(cmdCtx.Stderr(), cmdCtx.cmd.helpText())
 		}
 		if !cmdCtx.silenceError {
-			fmt.Println("Error:", mErr)
+			_, _ = fmt.Fprintln(cmdCtx.Stderr(), "Error:", mErr)
 		}
 		return mErr
 	}
 	return nil
 }
 
-func (c *Command) Execute() error {
-	return c.ExecuteContext(context.Background())
+func (c *Command) Execute(opts ...ExecutionOption) error {
+	return c.ExecuteContext(context.Background(), opts...)
 }
 
 func (c *Command) SubCommand(cmds ...*Command) {
@@ -230,36 +231,33 @@ func (c *Command) _version() string {
 	return _c.Version
 }
 
-func (c *Command) help() {
+func (c *Command) helpText() string {
+	var sb strings.Builder
+
 	if c.Description != "" {
-		fmt.Println(c.Description)
-		fmt.Println()
+		sb.WriteString(c.Description)
+		sb.WriteString("\n\n")
 	} else if c.Usage != "" {
-		fmt.Println(c.Usage)
-		fmt.Println()
+		sb.WriteString(c.Usage)
+		sb.WriteString("\n\n")
 	}
 
-	if v := c._version(); v != "" {
-		fmt.Println("Version:", v)
-		fmt.Println()
-	}
-
-	fmt.Println("Usage:")
+	sb.WriteString("Usage:\n")
 	usage := []string{c.Name}
 	for parent := c.parent; parent != nil; parent = parent.parent {
 		usage = append([]string{parent.name()}, usage...)
 	}
-	fmt.Print("  ", strings.Join(usage, " "))
+	sb.WriteString("  " + strings.Join(usage, " "))
 
 	if len(c.commands) > 0 {
-		fmt.Print(" [commands]")
+		sb.WriteString(" [commands]")
 	}
-	fmt.Println()
-	fmt.Println()
+
+	sb.WriteString("\n\n")
 
 	if len(c.Aliases) > 0 {
-		fmt.Println("Aliases:")
-		fmt.Printf("  %s\n\n", strings.Join(c.Aliases, ", "))
+		sb.WriteString("Aliases:\n")
+		_, _ = fmt.Fprintf(&sb, "  %s\n\n", strings.Join(c.Aliases, ", "))
 	}
 
 	fs := flags.NewFlagSet(flags.WithHelpFlag()).AddFlagSet(c.FlagSet)
@@ -270,21 +268,22 @@ func (c *Command) help() {
 	}
 
 	if len(c.commands) > 0 {
-		fmt.Println("Available Commands:")
-		fmt.Println(c.commands)
+		sb.WriteString("Available Commands:\n")
+		sb.WriteString(c.commands.String() + "\n")
 	}
 
 	fsStr := fs.Repr()
 	pfsStr := pfs.Repr()
 
-	fmt.Println("Flags:")
-	fmt.Println(fsStr)
+	sb.WriteString("Flags:\n")
+	sb.WriteString(fsStr + "\n")
 
 	if pfsStr != "" {
-		fmt.Println()
-		fmt.Println("Global Flags:")
-		fmt.Println(pfsStr)
+		sb.WriteString("\nGlobal Flags:\n")
+		sb.WriteString(pfsStr + "\n")
 	}
+
+	return sb.String()
 }
 
 func (c *Command) subCommand(cmd *Command) {
@@ -334,50 +333,44 @@ func (c *Command) execute(ctx *Context) error {
 		ctx.silenceHelp = true
 	}
 
-	// ################
-	// Walk the command tree
-	// ################
-
-	if c.hasSubCommands() {
-		if len(ctx.args) == 0 {
-			return fmt.Errorf("%s: %w", c.Name, ErrNoSubcommand)
-		}
-		next := c.commands[ctx.args[0]]
-		if next != nil {
-			ctx.depth++
-			ctx.args = ctx.args[1:]
-			return next.execute(ctx)
-		}
-	}
-
-	// ################
-	// Process Flags
-	// ################
-
 	fs := flags.NewFlagSet()
+
 	fs.AddFlagSet(ctx.persistentFlags())
 	fs.AddFlagSet(c.FlagSet)
 
 	ctx.flagGetter = flags.NewFlagGetter(fs)
 
-	var (
-		argLexer    = lexer.New(ctx.args)
-		args        []string
-		collectArgs bool
-	)
+	// ################
+	// Process Args
+	// ################
+
 	for {
-		token := argLexer.Read()
+		token := ctx.lexer.Read()
 		if token == nil {
 			break
 		}
 		switch token.Type {
 		case lexer.ValueType:
-			collectArgs = true
-			args = append(args, token.Value)
-		case lexer.MultiFlagType:
-			if collectArgs {
-				return fmt.Errorf("gommand: invalid flag position: flags must come before args: -%s", token.Name)
+			if c.hasSubCommands() {
+				// this is a bare value, it could be an arg
+				// or it could be a sub command
+				if next, ok := c.commands[token.Value]; ok {
+					if len(ctx.args) > 0 {
+						// an arg was already encountered that did not
+						// match a subcommand, and thus stored as a ctx.arg
+						// but now there is an arg that _is_ a subcommand.
+						// this throws an error.
+						return fmt.Errorf("gommand: invalid arg ordering. arguments %v appear before subcommand %s", ctx.args, token.Value)
+					}
+					// found the next command
+					ctx.depth++
+					return next.execute(ctx)
+				}
 			}
+			// no sub commands, store the arg
+			ctx.args = append(ctx.args, token.Value)
+
+		case lexer.MultiFlagType:
 			if token.Value != "" {
 				return fmt.Errorf("gommand: invalid multi-flag: cannot assign value to multi-flag: -%s", token.Name)
 			}
@@ -395,13 +388,6 @@ func (c *Command) execute(ctx *Context) error {
 				_ = f.Set("true")
 			}
 		default:
-			if collectArgs {
-				prefix := "-"
-				if token.Type == lexer.LongFlagType {
-					prefix += "-"
-				}
-				return fmt.Errorf("gommand: invalid flag position: flags must come before args: %s%s", prefix, token.Name)
-			}
 			var f flags.Flag
 			switch token.Type {
 			case lexer.ShortFlagType:
@@ -428,27 +414,29 @@ func (c *Command) execute(ctx *Context) error {
 			}
 
 			var setErr error
-			if token.Value == "" {
+			if token.Value != "" {
+				// the token has a value attached to it via `=`
+				// so set that value on the flag
+				setErr = f.Set(token.Value)
+			} else {
+				// the token has no value, consume the next token as the value
 				if f.Type() == flags.BoolFlagType {
 					setErr = f.Set("true")
 				} else {
-					if peekToken := argLexer.Peek(); peekToken != nil && peekToken.Type == lexer.ValueType {
-						setErr = f.Set(argLexer.Read().Value)
+					if peekToken := ctx.lexer.Peek(); peekToken != nil && peekToken.Type == lexer.ValueType {
+						setErr = f.Set(ctx.lexer.Read().Value)
 					}
 				}
-			} else {
-				setErr = f.Set(token.Value)
 			}
 			if setErr != nil {
 				return setErr
 			}
 		}
 	}
+
 	// ################
 	// Validate args
 	// ################
-
-	ctx.args = args
 
 	validator := c.ArgValidator
 	if validator == nil {
@@ -515,17 +503,21 @@ func (c *Command) run(ctx *Context) (runErr error) {
 		if runErr != nil && !ctx.deferPost {
 			return
 		}
+
+		// defer c.PostRun
 		if c.PostRun != nil {
 			if err := c.PostRun(ctx); err != nil {
-				c.err = errors.Join(c.err, err)
+				ctx.err = errors.Join(ctx.err, err)
 				if !ctx.deferPost {
 					return
 				}
 			}
 		}
+
+		// defer PersistentPostRuns
 		for i := len(ctx.postRuns) - 1; i >= 0; i-- {
 			if err := ctx.postRuns[i](ctx); err != nil {
-				c.err = errors.Join(c.err, err)
+				ctx.err = errors.Join(ctx.err, err)
 				if !ctx.deferPost {
 					return
 				}
@@ -535,10 +527,9 @@ func (c *Command) run(ctx *Context) (runErr error) {
 
 	defer func() {
 		if p := recover(); p != nil {
+			runErr = errors.Join(runErr, fmt.Errorf("panic: %v", p))
 			if !ctx.deferPost {
 				panic(p)
-			} else {
-				runErr = errors.Join(runErr, fmt.Errorf("panic: %v", p))
 			}
 		}
 	}()

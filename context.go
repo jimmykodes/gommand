@@ -2,8 +2,11 @@ package gommand
 
 import (
 	"context"
+	"io"
+	"os"
 
 	"github.com/jimmykodes/gommand/flags"
+	"github.com/jimmykodes/gommand/internal/lexer"
 )
 
 type Context struct {
@@ -16,10 +19,17 @@ type Context struct {
 	silenceHelp  bool
 	silenceError bool
 	depth        int
+	lexer        *lexer.Lexer
+
+	stdin  io.Reader
+	stdout io.Writer
+	stderr io.Writer
 
 	persistentFlagSets []*flags.FlagSet
 
 	flagGetter *flags.FlagGetter
+
+	err error
 }
 
 func (c *Context) addPersistentFlags(fs *flags.FlagSet) {
@@ -49,4 +59,25 @@ func (c *Context) Arg(idx int) string {
 
 func (c *Context) Flags() *flags.FlagGetter {
 	return c.flagGetter
+}
+
+func (c *Context) Stdin() io.Reader {
+	if c.stdin != nil {
+		return c.stdin
+	}
+	return os.Stdin
+}
+
+func (c *Context) Stdout() io.Writer {
+	if c.stdout != nil {
+		return c.stdout
+	}
+	return os.Stdout
+}
+
+func (c *Context) Stderr() io.Writer {
+	if c.stderr != nil {
+		return c.stderr
+	}
+	return os.Stderr
 }

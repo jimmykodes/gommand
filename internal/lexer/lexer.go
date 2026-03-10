@@ -50,18 +50,26 @@ func (l *Lexer) Peek() *Token {
 		return nil
 	}
 	flag, value, _ := strings.Cut(l.strs[l.pos], "=")
-	if strings.HasPrefix(flag, "--") {
+	if name, found := strings.CutPrefix(flag, "--"); found {
 		return &Token{
 			Type:  LongFlagType,
-			Name:  strings.TrimPrefix(flag, "--"),
+			Name:  name,
 			Value: value,
 		}
 	}
-	if strings.HasPrefix(flag, "-") {
+	if name, found := strings.CutPrefix(flag, "-"); found {
+		if char := name[0]; '0' <= char && char <= '9' {
+			// flag is -[numeric][chars...] so assume this is a
+			// negative number, not a flag, and return it as a value.
+			return &Token{
+				Type:  ValueType,
+				Value: flag,
+			}
+		}
 		if len(flag) == 2 {
 			return &Token{
 				Type:  ShortFlagType,
-				Name:  strings.TrimPrefix(flag, "-"),
+				Name:  name,
 				Value: value,
 			}
 		}

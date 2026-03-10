@@ -11,11 +11,12 @@ func TestLexer(t *testing.T) {
 	l := lexer.New([]string{
 		"-f",
 		"-lvg",
-		"--port",
-		"8080",
+		"--port", "8080",
 		"--host=0.0.0.0",
 		"-t=taco",
 		"-iec=false",
+		"--idx", "-1",
+		"-c", "-100",
 	})
 	expected := []*lexer.Token{
 		{
@@ -48,6 +49,22 @@ func TestLexer(t *testing.T) {
 			Type:  lexer.MultiFlagType,
 			Name:  "iec",
 			Value: "false",
+		},
+		{
+			Type: lexer.LongFlagType,
+			Name: "idx",
+		},
+		{
+			Type:  lexer.ValueType,
+			Value: "-1",
+		},
+		{
+			Type: lexer.ShortFlagType,
+			Name: "c",
+		},
+		{
+			Type:  lexer.ValueType,
+			Value: "-100",
 		},
 	}
 

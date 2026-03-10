@@ -361,9 +361,8 @@ func (c *Command) execute(ctx *Context) error {
 	ctx.flagGetter = flags.NewFlagGetter(fs)
 
 	var (
-		argLexer    = lexer.New(ctx.args)
-		args        []string
-		collectArgs bool
+		argLexer = lexer.New(ctx.args)
+		args     []string
 	)
 	for {
 		token := argLexer.Read()
@@ -372,12 +371,8 @@ func (c *Command) execute(ctx *Context) error {
 		}
 		switch token.Type {
 		case lexer.ValueType:
-			collectArgs = true
 			args = append(args, token.Value)
 		case lexer.MultiFlagType:
-			if collectArgs {
-				return fmt.Errorf("gommand: invalid flag position: flags must come before args: -%s", token.Name)
-			}
 			if token.Value != "" {
 				return fmt.Errorf("gommand: invalid multi-flag: cannot assign value to multi-flag: -%s", token.Name)
 			}
@@ -395,13 +390,6 @@ func (c *Command) execute(ctx *Context) error {
 				_ = f.Set("true")
 			}
 		default:
-			if collectArgs {
-				prefix := "-"
-				if token.Type == lexer.LongFlagType {
-					prefix += "-"
-				}
-				return fmt.Errorf("gommand: invalid flag position: flags must come before args: %s%s", prefix, token.Name)
-			}
 			var f flags.Flag
 			switch token.Type {
 			case lexer.ShortFlagType:
@@ -428,7 +416,12 @@ func (c *Command) execute(ctx *Context) error {
 			}
 
 			var setErr error
-			if token.Value == "" {
+			if token.Value != "" {
+				// the token has a value attached to it via `=`
+				// so set that value on the flag
+				setErr = f.Set(token.Value)
+			} else {
+				// the token has no value, consume the next token as the value
 				if f.Type() == flags.BoolFlagType {
 					setErr = f.Set("true")
 				} else {
@@ -436,14 +429,13 @@ func (c *Command) execute(ctx *Context) error {
 						setErr = f.Set(argLexer.Read().Value)
 					}
 				}
-			} else {
-				setErr = f.Set(token.Value)
 			}
 			if setErr != nil {
 				return setErr
 			}
 		}
 	}
+
 	// ################
 	// Validate args
 	// ################

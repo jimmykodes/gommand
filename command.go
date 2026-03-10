@@ -355,6 +355,13 @@ func (c *Command) execute(ctx *Context) error {
 				// this is a bare value, it could be an arg
 				// or it could be a sub command
 				if next, ok := c.commands[token.Value]; ok {
+					if len(ctx.args) > 0 {
+						// an arg was already encountered that did not
+						// match a subcommand, and thus stored as a ctx.arg
+						// but now there is an arg that _is_ a subcommand.
+						// this throws an error.
+						return fmt.Errorf("gommand: invalid arg ordering. arguments %v appear before subcommand %s", ctx.args, token.Value)
+					}
 					// found the next command
 					ctx.depth++
 					return next.execute(ctx)

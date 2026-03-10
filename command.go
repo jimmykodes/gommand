@@ -168,8 +168,6 @@ type Command struct {
 
 	parent   *Command
 	commands commands
-
-	err error
 }
 
 func (c *Command) ExecuteContext(ctx context.Context, opts ...ExecutionOptionFunc) error {
@@ -195,7 +193,7 @@ func (c *Command) ExecuteContext(ctx context.Context, opts ...ExecutionOptionFun
 		return nil
 	}
 
-	if mErr := errors.Join(err, c.err); mErr != nil {
+	if mErr := errors.Join(err, cmdCtx.err); mErr != nil {
 		if !cmdCtx.silenceHelp {
 			_, _ = fmt.Fprint(cmdCtx.Stderr(), cmdCtx.cmd.helpText())
 		}
@@ -509,7 +507,7 @@ func (c *Command) run(ctx *Context) (runErr error) {
 		// defer c.PostRun
 		if c.PostRun != nil {
 			if err := c.PostRun(ctx); err != nil {
-				c.err = errors.Join(c.err, err)
+				ctx.err = errors.Join(ctx.err, err)
 				if !ctx.deferPost {
 					return
 				}
@@ -519,7 +517,7 @@ func (c *Command) run(ctx *Context) (runErr error) {
 		// defer PersistentPostRuns
 		for i := len(ctx.postRuns) - 1; i >= 0; i-- {
 			if err := ctx.postRuns[i](ctx); err != nil {
-				c.err = errors.Join(c.err, err)
+				ctx.err = errors.Join(ctx.err, err)
 				if !ctx.deferPost {
 					return
 				}

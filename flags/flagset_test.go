@@ -4,6 +4,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/jimmykodes/gommand/flags"
 )
@@ -167,6 +168,30 @@ func TestFlagTypes(t *testing.T) {
 			t.Error("expected error for invalid int in slice, got nil")
 		}
 	})
+
+	t.Run("duration: valid value", func(t *testing.T) {
+		f := flags.DurationFlag("timeout", 0, "timeout")
+		if err := f.Set("5s"); err != nil {
+			t.Fatalf("Set: %v", err)
+		}
+		if got := f.Value().(time.Duration); got != 5*time.Second {
+			t.Errorf("got %v, want %v", got, 5*time.Second)
+		}
+	})
+
+	t.Run("duration: default value when not set", func(t *testing.T) {
+		f := flags.DurationFlag("timeout", 10*time.Minute, "timeout")
+		if got := f.Value().(time.Duration); got != 10*time.Minute {
+			t.Errorf("got %v, want %v", got, 10*time.Minute)
+		}
+	})
+
+	t.Run("duration: invalid value returns error", func(t *testing.T) {
+		f := flags.DurationFlag("timeout", 0, "timeout")
+		if err := f.Set("notaduration"); err == nil {
+			t.Error("expected error for invalid duration, got nil")
+		}
+	})
 }
 
 func TestFlagSource(t *testing.T) {
@@ -206,6 +231,73 @@ func TestFlagSource(t *testing.T) {
 		}
 		if got != "from-cli" {
 			t.Errorf("got %q, want %q", got, "from-cli")
+		}
+	})
+
+	// FlagSet.AddSource propagates to all flags added after the source is registered.
+	t.Run("FlagSet.AddSource applies to flags added after registration", func(t *testing.T) {
+		source := flags.ValuerFunc(func(name string) (string, bool) {
+			if name == "alpha" {
+				return "src-alpha", true
+			}
+			if name == "beta" {
+				return "src-beta", true
+			}
+			return "", false
+		})
+
+		fs := flags.NewFlagSet()
+		fs.AddSource(source)
+		fs.AddFlags(
+			flags.StringFlag("alpha", "", ""),
+			flags.StringFlag("beta", "", ""),
+		)
+
+		fg := flags.NewFlagGetter(fs)
+		for _, f := range fg.All() {
+			if err := flags.SetFromSources(f); err != nil {
+				t.Fatalf("SetFromSources(%s): %v", f.Name(), err)
+			}
+		}
+
+		if got, _ := fg.LookupString("alpha"); got != "src-alpha" {
+			t.Errorf("alpha: got %q, want %q", got, "src-alpha")
+		}
+		if got, _ := fg.LookupString("beta"); got != "src-beta" {
+			t.Errorf("beta: got %q, want %q", got, "src-beta")
+		}
+	})
+
+	// A source added to a specific flag via AddSources does not affect other
+	// flags in the same FlagSet.
+	t.Run("flag-level AddSources does not affect other flags in the set", func(t *testing.T) {
+		source := flags.ValuerFunc(func(name string) (string, bool) {
+			return "from-source", true
+		})
+
+		fAlpha := flags.StringFlag("alpha", "default-alpha", "")
+		fAlpha.AddSources(source)
+
+		fs := flags.NewFlagSet()
+		fs.AddFlags(
+			fAlpha,
+			flags.StringFlag("beta", "default-beta", ""),
+		)
+
+		fg := flags.NewFlagGetter(fs)
+		for _, f := range fg.All() {
+			if err := flags.SetFromSources(f); err != nil {
+				t.Fatalf("SetFromSources(%s): %v", f.Name(), err)
+			}
+		}
+
+		// alpha should be set from its flag-level source
+		if got, _ := fg.LookupString("alpha"); got != "from-source" {
+			t.Errorf("alpha: got %q, want %q", got, "from-source")
+		}
+		// beta has no source so should retain its default
+		if got, _ := fg.LookupString("beta"); got != "default-beta" {
+			t.Errorf("beta: got %q, want %q", got, "default-beta")
 		}
 	})
 }

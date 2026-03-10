@@ -28,6 +28,8 @@ type Context struct {
 	persistentFlagSets []*flags.FlagSet
 
 	flagGetter *flags.FlagGetter
+
+	err error
 }
 
 func (c *Context) addPersistentFlags(fs *flags.FlagSet) {

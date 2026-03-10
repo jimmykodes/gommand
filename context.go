@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jimmykodes/gommand/flags"
+	"github.com/jimmykodes/gommand/internal/lexer"
 )
 
 type Context struct {
@@ -16,6 +17,7 @@ type Context struct {
 	silenceHelp  bool
 	silenceError bool
 	depth        int
+	lexer        *lexer.Lexer
 
 	persistentFlagSets []*flags.FlagSet
 

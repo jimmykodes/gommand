@@ -14,10 +14,9 @@ import (
 )
 
 var (
-	ErrNoRunner     = errors.New("gommand: command has no run function")
-	ErrNoSubcommand = errors.New("gommand: must specify a subcommand")
-	errShowHelp     = errors.New("show help")
-	errShowVersion  = errors.New("show version")
+	ErrNoRunner    = errors.New("gommand: command has no run function")
+	errShowHelp    = errors.New("show help")
+	errShowVersion = errors.New("show version")
 )
 
 // Command represents a command line command
@@ -176,7 +175,7 @@ type Command struct {
 func (c *Command) ExecuteContext(ctx context.Context) error {
 	cmdCtx := &Context{
 		Context: ctx,
-		args:    os.Args[1:],
+		lexer:   lexer.New(os.Args[1:]),
 	}
 	err := c.execute(cmdCtx)
 	if errors.Is(err, errShowHelp) {
@@ -334,44 +333,36 @@ func (c *Command) execute(ctx *Context) error {
 		ctx.silenceHelp = true
 	}
 
-	// ################
-	// Walk the command tree
-	// ################
-
-	if c.hasSubCommands() {
-		if len(ctx.args) == 0 {
-			return fmt.Errorf("%s: %w", c.Name, ErrNoSubcommand)
-		}
-		next := c.commands[ctx.args[0]]
-		if next != nil {
-			ctx.depth++
-			ctx.args = ctx.args[1:]
-			return next.execute(ctx)
-		}
-	}
-
-	// ################
-	// Process Flags
-	// ################
-
 	fs := flags.NewFlagSet()
+
 	fs.AddFlagSet(ctx.persistentFlags())
 	fs.AddFlagSet(c.FlagSet)
 
 	ctx.flagGetter = flags.NewFlagGetter(fs)
 
-	var (
-		argLexer = lexer.New(ctx.args)
-		args     []string
-	)
+	// ################
+	// Process Args
+	// ################
+
 	for {
-		token := argLexer.Read()
+		token := ctx.lexer.Read()
 		if token == nil {
 			break
 		}
 		switch token.Type {
 		case lexer.ValueType:
-			args = append(args, token.Value)
+			if c.hasSubCommands() {
+				// this is a bare value, it could be an arg
+				// or it could be a sub command
+				if next, ok := c.commands[token.Value]; ok {
+					// found the next command
+					ctx.depth++
+					return next.execute(ctx)
+				}
+			}
+			// no sub commands, store the arg
+			ctx.args = append(ctx.args, token.Value)
+
 		case lexer.MultiFlagType:
 			if token.Value != "" {
 				return fmt.Errorf("gommand: invalid multi-flag: cannot assign value to multi-flag: -%s", token.Name)
@@ -425,8 +416,8 @@ func (c *Command) execute(ctx *Context) error {
 				if f.Type() == flags.BoolFlagType {
 					setErr = f.Set("true")
 				} else {
-					if peekToken := argLexer.Peek(); peekToken != nil && peekToken.Type == lexer.ValueType {
-						setErr = f.Set(argLexer.Read().Value)
+					if peekToken := ctx.lexer.Peek(); peekToken != nil && peekToken.Type == lexer.ValueType {
+						setErr = f.Set(ctx.lexer.Read().Value)
 					}
 				}
 			}
@@ -439,8 +430,6 @@ func (c *Command) execute(ctx *Context) error {
 	// ################
 	// Validate args
 	// ################
-
-	ctx.args = args
 
 	validator := c.ArgValidator
 	if validator == nil {

@@ -1,33 +1,12 @@
 package gommand_test
 
 import (
-	"io"
-	"os"
+	"bytes"
 	"strings"
 	"testing"
 
 	"github.com/jimmykodes/gommand"
 )
-
-func captureStdout(t *testing.T, fn func()) string {
-	t.Helper()
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("failed to create pipe: %s", err)
-	}
-	orig := os.Stdout
-	os.Stdout = w
-	defer func() { os.Stdout = orig }()
-
-	fn()
-
-	w.Close()
-	out, err := io.ReadAll(r)
-	if err != nil {
-		t.Fatalf("failed to read pipe: %s", err)
-	}
-	return strings.TrimRight(string(out), "\n")
-}
 
 func TestVersion(t *testing.T) {
 	noopRun := func(ctx *gommand.Context) error { return nil }
@@ -97,14 +76,13 @@ func TestVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			defer overwriteArgs(tt.args)()
+			var buf bytes.Buffer
 			cmd := tt.build()
-			var err error
-			got := captureStdout(t, func() {
-				err = cmd.Execute()
-			})
+			err := cmd.Execute(gommand.WithStdout(&buf))
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error: %v", err)
 			}
+			got := strings.TrimRight(buf.String(), "\n")
 			if got != tt.want {
 				t.Fatalf("version output: got %q, want %q", got, tt.want)
 			}

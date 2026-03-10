@@ -172,14 +172,18 @@ type Command struct {
 	err error
 }
 
-func (c *Command) ExecuteContext(ctx context.Context) error {
+func (c *Command) ExecuteContext(ctx context.Context, opts ...ExecutionOptionFunc) error {
 	cmdCtx := &Context{
 		Context: ctx,
 		lexer:   lexer.New(os.Args[1:]),
 	}
+	for _, opt := range opts {
+		opt.Apply(cmdCtx)
+	}
+
 	err := c.execute(cmdCtx)
 	if errors.Is(err, errShowHelp) {
-		cmdCtx.cmd.help()
+		_, _ = fmt.Fprint(cmdCtx.Stdout(), cmdCtx.cmd.helpText())
 		return nil
 	}
 	if errors.Is(err, errShowVersion) {
@@ -187,24 +191,24 @@ func (c *Command) ExecuteContext(ctx context.Context) error {
 		if v == "" {
 			v = "N/A"
 		}
-		fmt.Println(v)
+		_, _ = fmt.Fprintln(cmdCtx.Stdout(), v)
 		return nil
 	}
 
 	if mErr := errors.Join(err, c.err); mErr != nil {
 		if !cmdCtx.silenceHelp {
-			cmdCtx.cmd.help()
+			_, _ = fmt.Fprint(cmdCtx.Stderr(), cmdCtx.cmd.helpText())
 		}
 		if !cmdCtx.silenceError {
-			fmt.Println("Error:", mErr)
+			_, _ = fmt.Fprintln(cmdCtx.Stderr(), "Error:", mErr)
 		}
 		return mErr
 	}
 	return nil
 }
 
-func (c *Command) Execute() error {
-	return c.ExecuteContext(context.Background())
+func (c *Command) Execute(opts ...ExecutionOptionFunc) error {
+	return c.ExecuteContext(context.Background(), opts...)
 }
 
 func (c *Command) SubCommand(cmds ...*Command) {
@@ -229,36 +233,33 @@ func (c *Command) _version() string {
 	return _c.Version
 }
 
-func (c *Command) help() {
+func (c *Command) helpText() string {
+	var sb strings.Builder
+
 	if c.Description != "" {
-		fmt.Println(c.Description)
-		fmt.Println()
+		sb.WriteString(c.Description)
+		sb.WriteString("\n\n")
 	} else if c.Usage != "" {
-		fmt.Println(c.Usage)
-		fmt.Println()
+		sb.WriteString(c.Usage)
+		sb.WriteString("\n\n")
 	}
 
-	if v := c._version(); v != "" {
-		fmt.Println("Version:", v)
-		fmt.Println()
-	}
-
-	fmt.Println("Usage:")
+	sb.WriteString("Usage:\n")
 	usage := []string{c.Name}
 	for parent := c.parent; parent != nil; parent = parent.parent {
 		usage = append([]string{parent.name()}, usage...)
 	}
-	fmt.Print("  ", strings.Join(usage, " "))
+	sb.WriteString("  " + strings.Join(usage, " "))
 
 	if len(c.commands) > 0 {
-		fmt.Print(" [commands]")
+		sb.WriteString(" [commands]")
 	}
-	fmt.Println()
-	fmt.Println()
+
+	sb.WriteString("\n\n")
 
 	if len(c.Aliases) > 0 {
-		fmt.Println("Aliases:")
-		fmt.Printf("  %s\n\n", strings.Join(c.Aliases, ", "))
+		sb.WriteString("Aliases:\n")
+		_, _ = fmt.Fprintf(&sb, "  %s\n\n", strings.Join(c.Aliases, ", "))
 	}
 
 	fs := flags.NewFlagSet(flags.WithHelpFlag()).AddFlagSet(c.FlagSet)
@@ -269,21 +270,22 @@ func (c *Command) help() {
 	}
 
 	if len(c.commands) > 0 {
-		fmt.Println("Available Commands:")
-		fmt.Println(c.commands)
+		sb.WriteString("Available Commands:\n")
+		sb.WriteString(c.commands.String() + "\n")
 	}
 
 	fsStr := fs.Repr()
 	pfsStr := pfs.Repr()
 
-	fmt.Println("Flags:")
-	fmt.Println(fsStr)
+	sb.WriteString("Flags:\n")
+	sb.WriteString(fsStr + "\n")
 
 	if pfsStr != "" {
-		fmt.Println()
-		fmt.Println("Global Flags:")
-		fmt.Println(pfsStr)
+		sb.WriteString("\nGlobal Flags:\n")
+		sb.WriteString(pfsStr + "\n")
 	}
+
+	return sb.String()
 }
 
 func (c *Command) subCommand(cmd *Command) {

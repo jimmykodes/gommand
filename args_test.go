@@ -12,6 +12,16 @@ func Test_ArgValidator(t *testing.T) {
 	originalArgs := os.Args
 	defer func() { os.Args = originalArgs }()
 
+	ints := func(args []string) error {
+		for _, arg := range args {
+			_, err := strconv.Atoi(arg)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
 	tests := []struct {
 		name      string
 		args      []string
@@ -195,6 +205,18 @@ func Test_ArgValidator(t *testing.T) {
 		},
 	}
 
+	args_match := func(t *testing.T, args []string) func(ctx *gommand.Context) error {
+		return func(ctx *gommand.Context) error {
+			t.Helper()
+			for i, want := range args {
+				if got := ctx.Arg(i); got != want {
+					t.Fatalf("invalid args at index %d: got %q want %q", i, got, want)
+				}
+			}
+			return nil
+		}
+	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := &gommand.Command{
@@ -209,26 +231,4 @@ func Test_ArgValidator(t *testing.T) {
 			}
 		})
 	}
-}
-
-func args_match(t *testing.T, args []string) func(ctx *gommand.Context) error {
-	return func(ctx *gommand.Context) error {
-		t.Helper()
-		for i, want := range args {
-			if got := ctx.Arg(i); got != want {
-				t.Fatalf("invalid args at index %d: got %q want %q", i, got, want)
-			}
-		}
-		return nil
-	}
-}
-
-func ints(args []string) error {
-	for _, arg := range args {
-		_, err := strconv.Atoi(arg)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
